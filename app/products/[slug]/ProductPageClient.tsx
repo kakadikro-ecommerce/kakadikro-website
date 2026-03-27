@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import ProductDetails from "@/components/product/ProductDetails";
 import ProductGrid from "@/components/product/ProductGrid";
+import HeroSection from "@/components/ui/HeroSection";
+import Slider from "@/components/ui/Slider";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import {
@@ -12,10 +14,8 @@ import {
   fetchProductBySlug,
   fetchProducts,
 } from "@/redux/slice/productSlice";
-import HeroSection from "@/components/ui/HeroSection";
-import { useRouter } from "next/navigation";
 
-export default function ProductPage() {
+export default function ProductPageClient() {
   const router = useRouter();
   const params = useParams<{ slug: string }>();
   const slug = params?.slug;
@@ -26,7 +26,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (!items.length) {
-      void dispatch(fetchProducts());
+      void dispatch(fetchProducts({}));
     }
   }, [dispatch, items.length]);
 
@@ -80,11 +80,14 @@ export default function ProductPage() {
         ctaText="Contact Us"
         onCtaClick={() => router.push("/contactUs")}
       />
+      <Slider />
       <ProductDetails product={selectedProduct} />
       <ProductGrid
         badge="Related Products"
         title="More flavours from the same collection"
         description="Explore related products below and add the right pack size directly from the listing."
+        limit={4}
+        showViewAllButton
         products={relatedProducts}
       />
     </main>

@@ -5,7 +5,8 @@ import { Provider } from "react-redux";
 
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
-import { hydrateCart } from "@/redux/slice/cartSlice";
+import { fetchCart, resetCart } from "@/redux/slice/cartSlice";
+import { resetOrderState } from "@/redux/slice/orderSlice";
 import { hydrateUser } from "@/redux/slice/userSlice";
 import { store } from "@/redux/store";
 
@@ -15,25 +16,30 @@ interface ReduxProviderProps {
 
 function PersistedStateSync() {
   const dispatch = useAppDispatch();
-  const cartItems = useAppSelector((state) => state.cart.items);
   const currentUser = useAppSelector((state) => state.user.currentUser);
 
   useEffect(() => {
-    const storedCart = window.localStorage.getItem("kd-cart");
-    const storedUser = window.localStorage.getItem("kd-user");
+    try {
+      const storedUser = window.localStorage.getItem("kd-user");
 
-    if (storedCart) {
-      dispatch(hydrateCart(JSON.parse(storedCart)));
+      if (storedUser) {
+        dispatch(hydrateUser(JSON.parse(storedUser)));
+      }
+    } catch {
+      console.error("Failed to parse user from storage");
     }
 
-    if (storedUser) {
-      dispatch(hydrateUser(JSON.parse(storedUser)));
-    }
   }, [dispatch]);
 
   useEffect(() => {
-    window.localStorage.setItem("kd-cart", JSON.stringify(cartItems));
-  }, [cartItems]);
+    if (currentUser?.token) {
+      void dispatch(fetchCart());
+      return;
+    }
+
+    dispatch(resetCart());
+    dispatch(resetOrderState());
+  }, [currentUser?.token, dispatch]);
 
   useEffect(() => {
     if (currentUser) {

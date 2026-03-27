@@ -1,27 +1,16 @@
-"use client";
+import type { Metadata } from "next";
 
-import AboutPreview from "@/components/aboutUs/aboutPreview"
-import CustomerReviews from "@/components/ui/CustomerReviews"
-import ContactUs from "@/components/ui/ContactUs"
-import HeroSection from "@/components/ui/HeroSection";
-import { useRouter } from "next/navigation";
+import { buildMetadata } from "@/app/seo";
+import ContactUsPageClient from "./ContactUsPageClient";
 
-const Page = () => {
-  const router = useRouter();
+export const metadata: Metadata = buildMetadata({
+  title: "Contact Kaka Dikro",
+  description:
+    "Get in touch with Kaka Dikro for product questions, order support, wholesale inquiries, and customer assistance.",
+  path: "/contactUs",
+  keywords: ["contact Kaka Dikro", "masala support", "spice order help"],
+});
 
-  return (
-    <main>
-      <HeroSection
-        title="Contact Us"
-        image="/assets/contactHero.webp"
-        ctaText="Our Products"
-        onCtaClick={() => router.push("/product")}
-      />
-      <AboutPreview />
-      <ContactUs />
-      <CustomerReviews />
-    </main>
-  )
+export default function Page() {
+  return <ContactUsPageClient />;
 }
-
-export default Page

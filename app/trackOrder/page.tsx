@@ -1,21 +1,17 @@
-"use client";
+import type { Metadata } from "next";
 
-import HeroSection from "@/components/ui/HeroSection";
-import { useRouter } from "next/navigation";
+import { buildMetadata } from "@/app/seo";
+import TrackOrderPageClient from "./TrackOrderPageClient";
 
-const Page = () => {
-  const router = useRouter();
+export const metadata: Metadata = buildMetadata({
+  title: "Track Your Order",
+  description:
+    "Track your Kaka Dikro order status, delivery progress, and shipping updates from one convenient page.",
+  path: "/trackOrder",
+  keywords: ["track order", "order status", "Kaka Dikro delivery tracking"],
+  index: false,
+});
 
-  return (
-    <main>
-      <HeroSection
-        title="Track Your Order"
-        image="/assets/orderHero.webp"
-        ctaText="Our Products"
-        onCtaClick={() => router.push("/product")}
-      />
-    </main>
-  )
+export default function Page() {
+  return <TrackOrderPageClient />;
 }
-
-export default Page

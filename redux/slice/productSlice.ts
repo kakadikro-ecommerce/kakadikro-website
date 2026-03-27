@@ -3,19 +3,12 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 import {
   getAllProducts,
   getProductBySlug,
-  getProductsByCategory,
 } from "@/redux/api/productApi";
 import type { Product } from "@/types/product";
 
-interface CategoryBucket {
-  items: Product[];
-  loading: boolean;
-  error: string | null;
-}
-
 interface ProductState {
   items: Product[];
-  categorizedItems: Record<string, CategoryBucket>;
+  pagination: any;
   selectedProduct: Product | null;
   loading: boolean;
   selectedLoading: boolean;
@@ -25,7 +18,7 @@ interface ProductState {
 
 const initialState: ProductState = {
   items: [],
-  categorizedItems: {},
+  pagination: null,
   selectedProduct: null,
   loading: false,
   selectedLoading: false,
@@ -33,32 +26,16 @@ const initialState: ProductState = {
   selectedError: null,
 };
 
-export const fetchProducts = createAsyncThunk<Product[], void, { rejectValue: string }>(
-  "products/fetchProducts",
-  async (_, { rejectWithValue }) => {
-    try {
-      return await getAllProducts();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to fetch products.";
-
-      return rejectWithValue(message);
-    }
-  }
-);
-
-export const fetchProductsByCategory = createAsyncThunk<
-  { category: string; items: Product[] },
-  string,
+export const fetchProducts = createAsyncThunk<
+  { items: Product[]; pagination: any },
+  { search?: string; category?: string; page?: number; limit?: number },
   { rejectValue: string }
->("products/fetchProductsByCategory", async (category, { rejectWithValue }) => {
+>("products/fetchProducts", async (params, { rejectWithValue }) => {
   try {
-    const items = await getProductsByCategory(category);
-    return { category, items };
+    return await getAllProducts(params);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to fetch category products.";
-
+      error instanceof Error ? error.message : "Failed to fetch products.";
     return rejectWithValue(message);
   }
 });
@@ -73,7 +50,6 @@ export const fetchProductBySlug = createAsyncThunk<
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to fetch product details.";
-
     return rejectWithValue(message);
   }
 });
@@ -96,34 +72,12 @@ const productSlice = createSlice({
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
+        state.items = action.payload.items;
+        state.pagination = action.payload.pagination;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload ?? "Failed to fetch products.";
-      })
-      .addCase(fetchProductsByCategory.pending, (state, action) => {
-        const category = action.meta.arg;
-        state.categorizedItems[category] = {
-          items: state.categorizedItems[category]?.items ?? [],
-          loading: true,
-          error: null,
-        };
-      })
-      .addCase(fetchProductsByCategory.fulfilled, (state, action) => {
-        state.categorizedItems[action.payload.category] = {
-          items: action.payload.items,
-          loading: false,
-          error: null,
-        };
-      })
-      .addCase(fetchProductsByCategory.rejected, (state, action) => {
-        const category = action.meta.arg;
-        state.categorizedItems[category] = {
-          items: state.categorizedItems[category]?.items ?? [],
-          loading: false,
-          error: action.payload ?? "Failed to fetch category products.",
-        };
       })
       .addCase(fetchProductBySlug.pending, (state) => {
         state.selectedLoading = true;

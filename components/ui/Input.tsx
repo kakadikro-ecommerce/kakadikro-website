@@ -21,7 +21,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <label className={`text-[10px] uppercase font-black mb-1 tracking-widest transition-colors ${error ? 'text-red-500' : 'text-orange-900/40 group-focus-within:text-orange-700'}`}>
           {label}
         </label>
-        
+
         <div className="relative flex items-center">
           {Icon && (
             <div className={`absolute left-3 transition-colors ${error ? 'text-red-400' : 'text-stone-400 group-focus-within:text-orange-600'}`}>

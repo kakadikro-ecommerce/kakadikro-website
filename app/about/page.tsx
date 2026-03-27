@@ -1,25 +1,16 @@
-"use client";
+import type { Metadata } from "next";
 
-import AboutPreview from "@/components/aboutUs/aboutPreview"
-import CustomerReviews from "@/components/ui/CustomerReviews"
-import HeroSection from "@/components/ui/HeroSection";
-import { useRouter } from "next/navigation";
+import AboutPageClient from "./AboutPageClient";
+import { buildMetadata } from "@/app/seo";
 
-const Page = () => {
-  const router = useRouter();
+export const metadata: Metadata = buildMetadata({
+  title: "About Kaka Dikro",
+  description:
+    "Learn more about Kaka Dikro, our story, and the passion behind our authentic Gujarati masala and spice collection.",
+  path: "/about",
+  keywords: ["about Kaka Dikro", "Gujarati spice brand", "Indian masala company"],
+});
 
-  return (
-    <main>
-      <HeroSection
-        title="About Us"
-        image="/assets/abouthero.webp"
-        ctaText="Contact Us"
-        onCtaClick={() => router.push("/contactUs")}
-      />
-      <AboutPreview />
-      <CustomerReviews />
-    </main>
-  )
+export default function Page() {
+  return <AboutPageClient />;
 }
-
-export default Page

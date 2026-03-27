@@ -3,21 +3,25 @@
 import { Facebook, Instagram, Youtube } from 'lucide-react';
 import Link from 'next/link';
 
+const fbLink = process.env.NEXT_PUBLIC_FACEBOOK_URL
+const instaLink = process.env.NEXT_PUBLIC_INSTAGRAM_URL
+const ytLink = process.env.NEXT_PUBLIC_YOUTUBE_URL
+
+
 const Footer = () => {
   return (
-    <footer className="w-full font-[family-name:var(--font-serif-stack)] pt-8 sm:pt-10">
+    <footer className="w-full font-[family-name:var(--font-serif-stack)] pt-8 sm:pt-10 mt-16">
 
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-10">
-
-          <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col md:flex-row gap-10 lg:gap-12 mb-10 justify-between items-center md:items-start text-center md:text-left">
+          <div className="flex flex-col items-center md:items-start gap-4 xl:max-w-sm">
             <Link href="/" className="flex items-center shrink-0 cursor-pointer">
               <div className="h-16 md:h-20 flex items-center">
                 <img
-                  src="/kde-logo-1.png"
+                  src="/assets/kde-logo.webp"
                   alt="Logo"
-                  className="h-40 md:h-36 w-auto object-contain"
+                  className="h-28 w-auto object-contain md:h-36 sm:h-32"
                 />
               </div>
             </Link>
@@ -36,31 +40,34 @@ const Footer = () => {
               </p>
             </div>
 
-            <div className="flex gap-2 sm:gap-3 mt-2">
-              <a href="#" className="bg-[#003d4d] text-white p-2 rounded-full hover:bg-green-800 transition">
+            <div className="flex gap-3 mt-2 justify-center sm:justify-start">
+              <a href={fbLink} target="_blank"
+                rel="noopener noreferrer" className="bg-[#003d4d] text-white p-2 rounded-full hover:bg-green-800 transition">
                 <Facebook size={14} />
               </a>
-              <a href="#" className="bg-[#003d4d] text-white p-2 rounded-full hover:bg-green-800 transition">
+              <a href={instaLink} target="_blank"
+                rel="noopener noreferrer" className="bg-[#003d4d] text-white p-2 rounded-full hover:bg-green-800 transition">
                 <Instagram size={14} />
               </a>
-              <a href="#" className="bg-[#003d4d] text-white p-2 rounded-full hover:bg-green-800 transition">
+              <a href={ytLink} target="_blank"
+                rel="noopener noreferrer" className="bg-[#003d4d] text-white p-2 rounded-full hover:bg-green-800 transition">
                 <Youtube size={14} />
               </a>
             </div>
           </div>
-          <div>
+          <div className="w-full max-w-[260px]">
             <h3 className="text-sm sm:text-base font-semibold text-[#003d4d] mb-3 sm:mb-4">
               Info
             </h3>
             <ul className="flex flex-col gap-2 text-xs sm:text-sm text-[#003d4d]">
-              <li><a href="/product" className="hover:translate-x-1 transition inline-block">All Products</a></li>
+              <li><a href="/products" className="hover:translate-x-1 transition inline-block">All Products</a></li>
               <li><a href="/about" className="hover:translate-x-1 transition inline-block">About Us</a></li>
               <li><a href="/contactUs" className="hover:translate-x-1 transition inline-block">Contact Us</a></li>
               <li><a href="/trackOrder" className="hover:translate-x-1 transition inline-block">Track Your Order</a></li>
             </ul>
           </div>
 
-          <div>
+          <div className="w-full max-w-[260px]">
             <h3 className="text-sm sm:text-base font-semibold text-[#003d4d] mb-3 sm:mb-4">
               Quick Links
             </h3>

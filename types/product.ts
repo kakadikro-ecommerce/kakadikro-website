@@ -41,3 +41,9 @@ export interface CartItem {
   variant: ProductVariant;
   quantity: number;
 }
+
+export interface CartSummary {
+  items: CartItem[];
+  subtotal: number;
+  totalItems: number;
+}

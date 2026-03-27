@@ -9,12 +9,13 @@ import Button from "../ui/Button";
 import Link from "next/link";
 import Image from "next/image";
 import { loginSchema, LoginInput } from "../../lib/validations/auth";
-
 import { showAlert } from "../ui/alert";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { setUser } from "@/redux/slice/userSlice";
+import { loginUser } from "@/redux/api/userApi";
+import AuthPageGuard from "./AuthPageGuard";
 
 function LoginContent() {
   const router = useRouter();
@@ -37,40 +38,73 @@ function LoginContent() {
     if (emailFromUrl) setValue("email", emailFromUrl);
   }, [searchParams, setValue]);
 
-  const onSubmit = (data: LoginInput) => {
-    dispatch(
-      setUser({
-        email: data.email,
-      })
-    );
+  const onSubmit = async (data: LoginInput) => {
+    try {
+      const response = await loginUser(data);
 
-    showAlert({
-      type: "success",
-      message: `Welcome back! Rasoi ma umeryo asli swaad!`,
-    });
+      const userData = {
+        _id: response?.data?.user?.id,
+        name: response?.data?.user?.name,
+        email: response?.data?.user?.email,
+        role: response?.data?.user?.role,
+        token: response?.data?.token,
+      };
 
-    reset();
-    const redirectPath = searchParams.get("redirect") || "/";
-    router.push(redirectPath);
+      if (!userData.token || !userData.email) {
+        throw new Error("Invalid login response");
+      }
+
+      localStorage.setItem("token", userData.token);
+      localStorage.setItem("kd-user", JSON.stringify(userData));
+
+      dispatch(setUser(userData));
+
+      showAlert({
+        type: "success",
+        message: "Welcome back!",
+      });
+
+      reset();
+
+      const redirectPath = searchParams.get("redirect") || "/";
+      router.replace(redirectPath);
+    } catch (error: unknown) {
+      const errorMessage =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof error.response === "object" &&
+        error.response !== null &&
+        "data" in error.response &&
+        typeof error.response.data === "object" &&
+        error.response.data !== null &&
+        "message" in error.response.data &&
+        typeof error.response.data.message === "string"
+          ? error.response.data.message
+          : error instanceof Error
+            ? error.message
+            : "Login failed. Please check your credentials.";
+
+      showAlert({
+        type: "error",
+        message: errorMessage,
+      });
+    }
   };
 
   return (
-    <div className="w-full max-w-sm px-4 sm:px-6">
-      <div className="mb-6 sm:mb-8 text-center md:text-left">
+    <div className="w-full max-w-sm px-1 sm:px-2">
+      <div className="mb-5 text-center md:mb-6 md:text-left">
         <h1 className="font-brand-serif text-2xl sm:text-3xl md:text-4xl text-stone-900 tracking-tight mb-2">
-          Sign In
+          Welcome back!
         </h1>
-        <p className="text-[#7A330F] text-xs sm:text-sm font-medium mb-1">
-          Rasoi ma umeryo asli swaad!
-        </p>
-        <p className="text-stone-400 text-[10px] sm:text-xs tracking-wide">
-          Welcome back! Please enter your details.
+        <p className="text-gray-900 text-[10px] sm:text-xs tracking-wide">
+          Please enter your details.
         </p>
       </div>
-
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="space-y-3 sm:space-y-4 md:space-y-5"
+        className="space-y-3 sm:space-y-3.5 md:space-y-4"
       >
         <InputField
           label="Email Address"
@@ -86,12 +120,12 @@ function LoginContent() {
           {...register("password")}
           error={errors.password?.message}
         />
-        <div className="pt-2 sm:pt-1">
+        <div className="pt-1">
           <Button text="Sign In" type="submit" />
         </div>
       </form>
 
-      <div className="mt-4 sm:mt-1 pt-2 sm:pt-1 text-center">
+      <div className="mt-4 pt-1 text-center md:text-left">
         <p className="font-brand-serif text-xs sm:text-sm tracking-wide text-stone-500 font-medium">
           New here?{" "}
           <Link
@@ -108,50 +142,34 @@ function LoginContent() {
 
 export default function LoginForm() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-white antialiased overflow-x-hidden p-3 sm:p-4 md:p-6">
-      <ToastContainer position="top-right" autoClose={2000} theme="light" />
+    <AuthPageGuard>
+      <div className="min-h-screen w-full bg-white antialiased overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 md:flex md:items-center md:justify-center md:p-6">
+        <ToastContainer position="top-right" autoClose={2000} theme="light" />
 
-      <div className="w-full max-w-[400px] sm:max-w-[500px] md:max-w-6xl md:h-[89vh] bg-white rounded-2xl sm:rounded-3xl md:rounded-[40px] shadow-2xl flex flex-col md:flex-row overflow-hidden border border-stone-100">
-        <div className="w-full md:w-1/2 flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-12 bg-white min-h-[500px] md:min-h-full">
-          <Suspense
-            fallback={
-              <div className="text-stone-400 animate-pulse text-xs">
-                Loading...
-              </div>
-            }
-          >
-            <LoginContent />
-          </Suspense>
-        </div>
-
-        <div
-          className="hidden md:flex w-full md:w-1/2 p-8 lg:p-12 xl:p-20 flex-col items-center justify-center text-center relative bg-[#faf7f2] border-l border-stone-50"
-          style={{
-            backgroundImage: `url('https://www.transparenttextures.com/patterns/wood-pattern.png')`,
-          }}
-        >
-          <div className="absolute inset-0 bg-[#F4EBD0]/10 pointer-events-none" />
-          <div className="relative z-10 flex justify-center mb-6">
-            <div className="relative h-20 w-32 lg:h-28 lg:w-44 xl:h-42 xl:w-48">
-              <Image
-                src="/kde-logo-1.png"
-                alt="Logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
+        <div className="mx-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-[0_18px_45px_-24px_rgba(0,0,0,0.22)] sm:max-w-[520px] sm:rounded-3xl md:max-w-6xl md:flex-row md:rounded-[40px] md:shadow-2xl">
+          <div className="flex w-full items-center justify-center bg-white px-4 py-8 sm:px-6 sm:py-9 md:w-1/2 md:px-8 md:py-10 lg:px-12">
+            <Suspense
+              fallback={
+                <div className="text-stone-400 animate-pulse text-xs">
+                  Loading...
+                </div>
+              }
+            >
+              <LoginContent />
+            </Suspense>
           </div>
-          <div className="relative z-10">
-            <h2 className="font-brand-serif text-2xl lg:text-3xl xl:text-4xl text-stone-900 leading-tight tracking-tight mb-6">
-              Swad ni <br />
-              <span className="italic font-normal text-[#7A330F] block mt-1">
-                Asli Pehchaan.
-              </span>
-            </h2>
+
+          <div className="relative hidden w-full overflow-hidden border-l border-stone-50 bg-[#faf7f2] md:flex md:w-1/2 md:min-h-[620px] md:items-center md:justify-center md:p-10 lg:p-12 xl:p-16">
+            <Image
+              src="/assets/login.webp"
+              alt="Login background"
+              fill
+              className="object-cover"
+              priority
+            />
           </div>
         </div>
       </div>
-    </div>
+    </AuthPageGuard>
   );
 }

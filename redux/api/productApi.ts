@@ -4,6 +4,7 @@ import type { Product } from "@/types/product";
 interface ProductsResponse {
   data?: Product[];
   products?: Product[];
+  pagination?: any;
 }
 
 interface ProductResponse {
@@ -43,30 +44,23 @@ const parseProductResponse = (payload: Product | ProductResponse): Product => {
   throw new Error("Product not found.");
 };
 
-export const getAllProducts = async (): Promise<Product[]> => {
-  const response = await axios.get<Product[] | ProductsResponse>("/products");
-  return parseProductsResponse(response.data);
-};
+export const getAllProducts = async (params?: {
+  search?: string;
+  category?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await axios.get("/products", { params });
 
-export const getProductsByCategory = async (category: string): Promise<Product[]> => {
-  try {
-    const response = await axios.get<Product[] | ProductsResponse>("/products", {
-      params: { category },
-    });
-
-    return parseProductsResponse(response.data);
-  } catch {
-    const fallbackResponse = await axios.get<Product[] | ProductsResponse>(
-      `/products/category/${encodeURIComponent(category)}`
-    );
-
-    return parseProductsResponse(fallbackResponse.data);
-  }
+  return {
+    items: parseProductsResponse(response.data),
+    pagination: response.data.pagination,
+  };
 };
 
 export const getProductBySlug = async (slug: string): Promise<Product> => {
   try {
-    const response = await axios.get<Product | ProductResponse>(`/products/slug/${slug}`);
+    const response = await axios.get<Product | ProductResponse>(`/products/${slug}`);
     return parseProductResponse(response.data);
   } catch {
     const fallbackResponse = await axios.get<Product | ProductResponse>(`/products/${slug}`);
