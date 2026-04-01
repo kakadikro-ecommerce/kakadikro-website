@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import ProductDetails from "@/components/product/ProductDetails";
 import ProductGrid from "@/components/product/ProductGrid";
 import HeroSection from "@/components/ui/HeroSection";
+import Loader from "@/components/ui/Loader";
 import Slider from "@/components/ui/Slider";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
@@ -14,10 +15,13 @@ import {
   fetchProductBySlug,
   fetchProducts,
 } from "@/redux/slice/productSlice";
+import FAQSection from "@/components/ui/FaqSection";
+import { trackOrderFAQs } from "@/utils/constants";
 
 export default function ProductPageClient() {
   const router = useRouter();
   const params = useParams<{ slug: string }>();
+  const productRef = useRef<HTMLDivElement | null>(null);
   const slug = params?.slug;
   const dispatch = useAppDispatch();
   const { items, loading, selectedProduct, selectedLoading, selectedError } = useAppSelector(
@@ -42,6 +46,17 @@ export default function ProductPageClient() {
     };
   }, [dispatch, slug]);
 
+  useEffect(() => {
+    if (selectedProduct && productRef.current) {
+      setTimeout(() => {
+        productRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 200);
+    }
+  }, [selectedProduct]);
+
   const relatedProducts = items.filter(
     (product) =>
       product.slug !== selectedProduct?.slug &&
@@ -51,13 +66,11 @@ export default function ProductPageClient() {
   if (selectedLoading || (loading && !selectedProduct)) {
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="animate-pulse rounded-[32px] border border-orange-100 bg-white p-10 shadow-sm">
-          <div className="h-8 w-40 rounded bg-orange-100" />
-          <div className="mt-6 h-12 w-2/3 rounded bg-orange-50" />
-          <div className="mt-4 h-5 w-full rounded bg-slate-100" />
-          <div className="mt-3 h-5 w-5/6 rounded bg-slate-100" />
-          <div className="mt-8 h-[340px] rounded-[28px] bg-orange-50" />
-        </div>
+        <Loader
+          label="Preparing product details"
+          className="rounded-[32px] border border-orange-100 bg-white shadow-sm"
+          size="lg"
+        />
       </main>
     );
   }
@@ -81,7 +94,9 @@ export default function ProductPageClient() {
         onCtaClick={() => router.push("/contactUs")}
       />
       <Slider />
-      <ProductDetails product={selectedProduct} />
+      <div ref={productRef}>
+        <ProductDetails product={selectedProduct} />
+      </div>
       <ProductGrid
         badge="Related Products"
         title="More flavours from the same collection"
@@ -89,6 +104,9 @@ export default function ProductPageClient() {
         limit={4}
         showViewAllButton
         products={relatedProducts}
+      />
+      <FAQSection
+        faqs={trackOrderFAQs}
       />
     </main>
   );

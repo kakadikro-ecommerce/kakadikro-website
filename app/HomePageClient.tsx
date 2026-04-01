@@ -7,6 +7,8 @@ import Slider from "@/components/ui/Slider";
 import WhyChooseUs from "@/components/ui/whyChooseUs";
 import AboutPreview from "@/components/aboutUs/aboutPreview";
 import ProductProcess from "@/components/product/ProductProcess";
+import FAQSection from "@/components/ui/FaqSection";
+import { generalFaqs } from "@/utils/constants";
 
 export default function HomePageClient() {
   return (
@@ -18,6 +20,9 @@ export default function HomePageClient() {
       <AboutPreview />
       <ProductProcess />
       <CustomerReviews />
+      <FAQSection 
+        faqs={generalFaqs}
+      />
     </main>
   );
 }

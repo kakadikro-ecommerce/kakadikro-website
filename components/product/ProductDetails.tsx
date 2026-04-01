@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { showAlert } from "@/components/ui/alert";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { normalizeImageSrc } from "@/lib/image";
 import { addCartItem, openCart } from "@/redux/slice/cartSlice";
 import type { Product } from "@/types/product";
 
@@ -24,7 +25,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
   const selectedVariant =
     product.variants.find((variant) => variant.weight === selectedWeight) || product.variants?.[0];
-  const primaryImage = product.images?.[0]?.url || "/kde-logo-1.png";
+  const primaryImage = normalizeImageSrc(product.images?.[0]?.url, "/kde-logo-1.png");
   const price = selectedVariant?.price;
   const mrp = selectedVariant?.mrp;
   const hasDiscount = typeof mrp === "number" && typeof price === "number" && mrp > price;

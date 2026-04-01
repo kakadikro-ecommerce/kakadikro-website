@@ -1,28 +1,48 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import {
   AlertCircle,
   Clock,
+  House,
+  Mailbox,
+  Map,
   MapPin,
+  MapPlus,
   PackageCheck,
   PackageSearch,
+  Pencil,
+  Phone,
   Search,
   ShoppingBag,
   Truck,
+  UserRound,
+  X,
   XCircle,
 } from "lucide-react";
 
+import { showAlert } from "@/components/ui/alert";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { normalizeImageSrc } from "@/lib/image";
+import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
 import {
   cancelExistingOrder,
+  clearOrderError,
   fetchMyOrders,
   fetchOrderById,
-  hydrateOrderCache,
+  updateExistingOrder,
 } from "@/redux/slice/orderSlice";
-import { canCancelOrder, type Order, type OrderStatus } from "@/types/order";
+import {
+  EMPTY_SHIPPING_ADDRESS,
+  canCancelOrder,
+  type Order,
+  type OrderStatus,
+  type ShippingAddress,
+} from "@/types/order";
 
 const STATUS_STEPS: OrderStatus[] = [
   "pending",
@@ -39,42 +59,23 @@ const statusStyles: Record<OrderStatus, string> = {
   cancelled: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
 };
 
-const ORDER_HISTORY_STORAGE_KEY = "track-order-history-cache";
-
-type CachedOrderHistory = {
-  orders: Order[];
-  currentOrder: Order | null;
-  selectedOrder: Order | null;
-  showMyOrders: boolean;
-};
-
-const getCachedOrderHistory = (): CachedOrderHistory | null => {
-  if (typeof window === "undefined") return null;
-
-  const cachedValue = window.localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
-  if (!cachedValue) return null;
-
-  try {
-    const parsed = JSON.parse(cachedValue) as {
-      orders?: Order[];
-      currentOrder?: Order | null;
-      selectedOrder?: Order | null;
-      showMyOrders?: boolean;
-    };
-
-    return {
-      orders: Array.isArray(parsed.orders) ? parsed.orders : [],
-      currentOrder: parsed.currentOrder ?? null,
-      selectedOrder: parsed.selectedOrder ?? parsed.currentOrder ?? null,
-      showMyOrders: Boolean(parsed.showMyOrders),
-    };
-  } catch {
-    window.localStorage.removeItem(ORDER_HISTORY_STORAGE_KEY);
-    return null;
-  }
-};
-
 const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString("en-IN")}`;
+
+const fieldConfig: Array<{
+  name: keyof ShippingAddressInput;
+  label: string;
+  placeholder: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { name: "fullName", label: "Full name", placeholder: "Enter recipient name", icon: UserRound },
+  { name: "phone", label: "Phone number", placeholder: "10-digit mobile number", icon: Phone },
+  { name: "addressLine1", label: "Address line 1", placeholder: "House no, street, area", icon: House },
+  { name: "addressLine2", label: "Address line 2", placeholder: "Apartment, landmark (optional)", icon: MapPlus },
+  { name: "city", label: "City", placeholder: "City", icon: MapPin },
+  { name: "state", label: "State", placeholder: "State", icon: Map },
+  { name: "postalCode", label: "Postal code", placeholder: "6-digit PIN code", icon: Mailbox },
+  { name: "country", label: "Country", placeholder: "Country", icon: MapPin },
+];
 
 const formatDate = (value?: string) => {
   if (!value) return "N/A";
@@ -103,32 +104,58 @@ const getStatusCopy = (status: OrderStatus) => {
   }
 };
 
+function AddressField({
+  label,
+  placeholder,
+  error,
+  icon: Icon,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  error?: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5c7176]">
+        {label}
+      </span>
+      <div
+        className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 transition ${
+          error
+            ? "border-rose-300"
+            : "border-[#d9ebe6] focus-within:border-[#0d5d6c] focus-within:ring-2 focus-within:ring-[#0d5d6c]/10"
+        }`}
+      >
+        <Icon className={`h-4 w-4 shrink-0 ${error ? "text-rose-500" : "text-[#0d5d6c]"}`} />
+        <input
+          {...props}
+          placeholder={placeholder}
+          className="w-full bg-transparent text-sm text-[#16343c] outline-none placeholder:text-slate-400"
+        />
+      </div>
+      {error ? <p className="mt-1 text-xs font-medium text-rose-600">{error}</p> : null}
+    </label>
+  );
+}
+
+const getDefaultValues = (
+  shippingAddress?: Partial<ShippingAddress> | null
+): ShippingAddressInput => ({
+  ...EMPTY_SHIPPING_ADDRESS,
+  ...shippingAddress,
+});
+
 const TrackOrder = () => {
   const dispatch = useAppDispatch();
   const { orders, loading, actionLoading, error } = useAppSelector(
     (state) => state.order
   );
-  const cachedOrderHistory = useMemo(() => getCachedOrderHistory(), []);
-
   const [input, setInput] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(
-    () => cachedOrderHistory?.selectedOrder ?? null
-  );
-  const [showMyOrders, setShowMyOrders] = useState(
-    () => cachedOrderHistory?.showMyOrders ?? false
-  );
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showMyOrders, setShowMyOrders] = useState(false);
   const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!cachedOrderHistory) return;
-
-    dispatch(
-      hydrateOrderCache({
-        orders: cachedOrderHistory.orders,
-        currentOrder: cachedOrderHistory.currentOrder,
-      })
-    );
-  }, [cachedOrderHistory, dispatch]);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   const handleSearch = () => {
     if (!input.trim()) return;
@@ -137,15 +164,22 @@ const TrackOrder = () => {
       .unwrap()
       .then((res) => {
         setSelectedOrder(res);
+        setIsEditingAddress(false);
         setShowMyOrders(false);
-        setInput("");
       })
-      .catch(() => {
+      .catch((message) => {
         setSelectedOrder(null);
+        setIsEditingAddress(false);
+        showAlert({
+          type: "error",
+          message:
+            typeof message === "string" ? message : "Unable to find that order.",
+        });
       });
   };
 
   const handleViewMyOrders = () => {
+    setIsEditingAddress(false);
     setShowMyOrders(true);
     dispatch(fetchMyOrders())
       .unwrap()
@@ -154,7 +188,26 @@ const TrackOrder = () => {
           setSelectedOrder(res.orders[0]);
         }
       })
-      .catch(() => undefined);
+      .catch((message) => {
+        showAlert({
+          type: "error",
+          message:
+            typeof message === "string"
+              ? message
+              : "Unable to load your order history right now.",
+        });
+      });
+  };
+
+  const handleCloseOrderHistory = () => {
+    setShowMyOrders(false);
+    setSelectedOrder(null);
+    setIsEditingAddress(false);
+  };
+
+  const handleCloseTrackedOrder = () => {
+    setSelectedOrder(null);
+    setIsEditingAddress(false);
   };
 
   const handleSelectOrder = (orderNumber: string, orderId: string) => {
@@ -164,6 +217,16 @@ const TrackOrder = () => {
       .unwrap()
       .then((res) => {
         setSelectedOrder(res);
+        setIsEditingAddress(false);
+      })
+      .catch((message) => {
+        showAlert({
+          type: "error",
+          message:
+            typeof message === "string"
+              ? message
+              : "Unable to open order details right now.",
+        });
       })
       .finally(() => {
         setDetailsLoadingId(null);
@@ -176,19 +239,64 @@ const TrackOrder = () => {
     return orders.find((entry) => entry.id === selectedOrderId) || selectedOrder;
   }, [orders, selectedOrder, selectedOrderId]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const canEditAddress = !!activeOrder && canCancelOrder(activeOrder.orderStatus);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ShippingAddressInput>({
+    resolver: zodResolver(shippingAddressSchema),
+    mode: "onTouched",
+    defaultValues: getDefaultValues(activeOrder?.shippingAddress),
+  });
 
-    window.localStorage.setItem(
-      ORDER_HISTORY_STORAGE_KEY,
-      JSON.stringify({
-        orders,
-        currentOrder: activeOrder,
-        selectedOrder,
-        showMyOrders,
-      })
-    );
-  }, [orders, activeOrder, selectedOrder, showMyOrders]);
+  useEffect(() => {
+    reset(getDefaultValues(activeOrder?.shippingAddress));
+  }, [activeOrder?.id, activeOrder?.shippingAddress, reset]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearOrderError());
+    };
+  }, [dispatch]);
+
+  const handleStartAddressEdit = () => {
+    if (!activeOrder?.shippingAddress || !canEditAddress) return;
+    reset(getDefaultValues(activeOrder.shippingAddress));
+    setIsEditingAddress(true);
+  };
+
+  const handleCancelAddressEdit = () => {
+    reset(getDefaultValues(activeOrder?.shippingAddress));
+    setIsEditingAddress(false);
+  };
+
+  const handleUpdateAddress = async (values: ShippingAddressInput) => {
+    if (!activeOrder?.id || !canEditAddress) return;
+
+    try {
+      const updatedOrder = await dispatch(
+        updateExistingOrder({
+          id: activeOrder.id,
+          payload: { shippingAddress: values },
+        })
+      ).unwrap();
+
+      setSelectedOrder(updatedOrder);
+      setIsEditingAddress(false);
+      showAlert({
+        type: "success",
+        message: "Delivery address updated successfully.",
+      });
+    } catch (message) {
+      showAlert({
+        type: "error",
+        message:
+          typeof message === "string" ? message : "Failed to update delivery address.",
+      });
+    }
+  };
 
   const currentStepIndex =
     activeOrder && activeOrder.orderStatus !== "cancelled"
@@ -197,7 +305,7 @@ const TrackOrder = () => {
 
   return (
     <section className="w-full py-8 sm:py-12">
-      <div className="mx-auto max-w-7xl px-2 sm:px-4">
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 lg:px-5">
         <div className="mx-auto max-w-4xl space-y-6">
           <h1 className="text-center text-2xl font-bold text-[#003d4d] sm:text-3xl">
             Track Your Order
@@ -253,8 +361,12 @@ const TrackOrder = () => {
         )}
 
         {(showMyOrders || activeOrder) && (
-          <div className="mt-10 grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
-            <aside className="rounded-3xl border border-[#d9ebe6] bg-white p-4 shadow-[0_18px_60px_rgba(0,61,77,0.08)] sm:p-5">
+          <div
+            className={`mt-10 grid gap-6 ${showMyOrders ? "lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start" : ""
+              }`}
+          >
+            {showMyOrders ? (
+              <aside className="rounded-3xl border border-[#d9ebe6] bg-white p-4 shadow-[0_18px_60px_rgba(0,61,77,0.08)] sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-[#003d4d]">
@@ -268,6 +380,15 @@ const TrackOrder = () => {
                   {orders.length} orders
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleCloseOrderHistory}
+                className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#d9ebe6] px-3 py-2 text-sm font-medium text-[#003d4d] transition hover:border-[#98c8bd] hover:bg-[#f6fbf9]"
+              >
+                <X className="h-4 w-4" />
+                Close
+              </button>
 
               {loading && showMyOrders && orders.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[#c7ddda] px-4 py-8 text-center text-sm text-gray-500">
@@ -284,7 +405,7 @@ const TrackOrder = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                   {orders.map((ord) => {
                     const isActive = activeOrder?.id === ord.id;
                     const isLoadingCard = detailsLoadingId === ord.id;
@@ -340,9 +461,13 @@ const TrackOrder = () => {
                   })}
                 </div>
               )}
-            </aside>
+              </aside>
+            ) : null}
 
-            <div className="rounded-3xl border border-[#d9ebe6] bg-white p-5 shadow-[0_18px_60px_rgba(0,61,77,0.08)] sm:p-6">
+            <div
+              className={`rounded-3xl border border-[#d9ebe6] bg-white p-4 shadow-[0_18px_60px_rgba(0,61,77,0.08)] sm:p-5 lg:p-6 ${showMyOrders ? "" : "mx-auto w-full max-w-5xl"
+                }`}
+            >
               {!activeOrder ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#c7ddda] bg-[#fbfefd] px-6 py-10 text-center">
                   <PackageSearch className="mb-4 h-10 w-10 text-[#7aa2a9]" />
@@ -350,8 +475,8 @@ const TrackOrder = () => {
                     Select an order to view details
                   </h3>
                   <p className="mt-2 max-w-md text-sm text-gray-500">
-                    Track a fresh order above or open any order from the left panel
-                    to check items, status, shipping details, and actions.
+                    Track a fresh order above or open order history to check
+                    items, status, shipping details, and actions.
                   </p>
                 </div>
               ) : (
@@ -367,11 +492,21 @@ const TrackOrder = () => {
                       </p>
                     </div>
 
-                    <div
-                      className={`inline-flex w-fit items-center rounded-full px-4 py-2 text-sm font-semibold capitalize ${statusStyles[activeOrder.orderStatus]
-                        }`}
-                    >
-                      {activeOrder.orderStatus}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div
+                        className={`inline-flex w-fit items-center rounded-full px-4 py-2 text-sm font-semibold capitalize ${statusStyles[activeOrder.orderStatus]
+                          }`}
+                      >
+                        {activeOrder.orderStatus}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCloseTrackedOrder}
+                        className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                      >
+                        <X className="h-4 w-4" />
+                        Close
+                      </button>
                     </div>
                   </div>
 
@@ -498,7 +633,7 @@ const TrackOrder = () => {
                     )}
                   </div>
 
-                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_340px]">
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
                       <h3 className="text-lg font-semibold text-[#003d4d]">
                         Order items
@@ -510,7 +645,7 @@ const TrackOrder = () => {
                             className="flex flex-col gap-4 rounded-2xl border border-[#e4f0ed] p-4 sm:flex-row sm:items-center"
                           >
                             <Image
-                              src={item.image}
+                              src={normalizeImageSrc(item.image)}
                               alt={item.name}
                               width={80}
                               height={80}
@@ -537,28 +672,88 @@ const TrackOrder = () => {
 
                     <div className="space-y-4">
                       <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
-                        <h3 className="text-lg font-semibold text-[#003d4d]">
-                          Delivery address
-                        </h3>
-                        <div className="mt-4 flex items-start gap-3">
-                          <MapPin className="mt-1 h-5 w-5 text-[#0d5d6c]" />
-                          <div className="text-sm text-[#31545b]">
-                            <p className="font-semibold text-[#003d4d]">
-                              {activeOrder.shippingAddress.fullName}
-                            </p>
-                            <p>{activeOrder.shippingAddress.phone}</p>
-                            <p className="mt-1">
-                              {activeOrder.shippingAddress.addressLine1}
-                              {activeOrder.shippingAddress.addressLine2
-                                ? `, ${activeOrder.shippingAddress.addressLine2}`
-                                : ""}
-                              , {activeOrder.shippingAddress.city},{" "}
-                              {activeOrder.shippingAddress.state} -{" "}
-                              {activeOrder.shippingAddress.postalCode}
-                            </p>
-                            <p>{activeOrder.shippingAddress.country}</p>
-                          </div>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <h3 className="text-lg font-semibold text-[#003d4d]">
+                            Delivery address
+                          </h3>
+                          {canEditAddress && !isEditingAddress ? (
+                            <button
+                              type="button"
+                              onClick={handleStartAddressEdit}
+                              disabled={actionLoading}
+                              className="inline-flex items-center gap-2 rounded-full border border-[#d9ebe6] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#0d5d6c] transition hover:border-[#98c8bd] hover:bg-[#f6fbf9] disabled:cursor-not-allowed disabled:opacity-60"
+                              aria-label="Edit delivery address"
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </button>
+                          ) : null}
                         </div>
+
+                        {isEditingAddress ? (
+                          <form
+                            onSubmit={handleSubmit(handleUpdateAddress)}
+                            className="mt-4 space-y-5"
+                          >
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              {fieldConfig.map((field) => (
+                                <Controller
+                                  key={field.name}
+                                  name={field.name}
+                                  control={control}
+                                  render={({ field: controllerField }) => (
+                                    <AddressField
+                                      {...controllerField}
+                                      value={controllerField.value ?? ""}
+                                      label={field.label}
+                                      placeholder={field.placeholder}
+                                      icon={field.icon}
+                                      error={errors[field.name]?.message}
+                                    />
+                                  )}
+                                />
+                              ))}
+                            </div>
+
+                            <div className="flex flex-col gap-3 sm:flex-row">
+                              <button
+                                type="submit"
+                                disabled={actionLoading}
+                                className="flex-1 rounded-2xl bg-[#003d4d] px-5 py-3 font-semibold text-white transition hover:bg-[#0d5d6c] disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {actionLoading ? "Updating address..." : "Update"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelAddressEdit}
+                                disabled={actionLoading}
+                                className="flex-1 rounded-2xl border border-[#d9ebe6] px-5 py-3 font-semibold text-[#31545b] transition hover:bg-[#f6fbf9] disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="mt-4 flex items-start gap-3">
+                            <MapPin className="mt-1 h-5 w-5 text-[#0d5d6c]" />
+                            <div className="text-sm text-[#31545b]">
+                              <p className="font-semibold text-[#003d4d]">
+                                {activeOrder.shippingAddress.fullName}
+                              </p>
+                              <p>{activeOrder.shippingAddress.phone}</p>
+                              <p className="mt-1">
+                                {activeOrder.shippingAddress.addressLine1}
+                                {activeOrder.shippingAddress.addressLine2
+                                  ? `, ${activeOrder.shippingAddress.addressLine2}`
+                                  : ""}
+                                , {activeOrder.shippingAddress.city},{" "}
+                                {activeOrder.shippingAddress.state} -{" "}
+                                {activeOrder.shippingAddress.postalCode}
+                              </p>
+                              <p>{activeOrder.shippingAddress.country}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
@@ -588,6 +783,19 @@ const TrackOrder = () => {
                               .unwrap()
                               .then((res) => {
                                 setSelectedOrder(res);
+                                showAlert({
+                                  type: "success",
+                                  message: `Order ${res.orderNumber} has been cancelled.`,
+                                });
+                              })
+                              .catch((message) => {
+                                showAlert({
+                                  type: "error",
+                                  message:
+                                    typeof message === "string"
+                                      ? message
+                                      : "Failed to cancel the order.",
+                                });
                               })
                           }
                           disabled={actionLoading}

@@ -10,11 +10,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { loginSchema, LoginInput } from "../../lib/validations/auth";
 import { showAlert } from "../ui/alert";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { setUser } from "@/redux/slice/userSlice";
+import { setAuthSession } from "@/redux/slice/userSlice";
 import { loginUser } from "@/redux/api/userApi";
+import { setAccessToken, setStoredUser } from "@/lib/auth";
 import AuthPageGuard from "./AuthPageGuard";
 
 function LoginContent() {
@@ -43,21 +42,22 @@ function LoginContent() {
       const response = await loginUser(data);
 
       const userData = {
-        _id: response?.data?.user?.id,
+        _id: response?.data?.user?._id || response?.data?.user?.id,
+        id: response?.data?.user?.id || response?.data?.user?._id,
         name: response?.data?.user?.name,
         email: response?.data?.user?.email,
         role: response?.data?.user?.role,
-        token: response?.data?.token,
       };
+      const accessToken = response?.data?.accessToken;
 
-      if (!userData.token || !userData.email) {
+      if (!accessToken || !userData.email) {
         throw new Error("Invalid login response");
       }
 
-      localStorage.setItem("token", userData.token);
-      localStorage.setItem("kd-user", JSON.stringify(userData));
+      setAccessToken(accessToken);
+      setStoredUser(userData);
 
-      dispatch(setUser(userData));
+      dispatch(setAuthSession({ user: userData, accessToken }));
 
       showAlert({
         type: "success",
@@ -144,8 +144,6 @@ export default function LoginForm() {
   return (
     <AuthPageGuard>
       <div className="min-h-screen w-full bg-white antialiased overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 md:flex md:items-center md:justify-center md:p-6">
-        <ToastContainer position="top-right" autoClose={2000} theme="light" />
-
         <div className="mx-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-[0_18px_45px_-24px_rgba(0,0,0,0.22)] sm:max-w-[520px] sm:rounded-3xl md:max-w-6xl md:flex-row md:rounded-[40px] md:shadow-2xl">
           <div className="flex w-full items-center justify-center bg-white px-4 py-8 sm:px-6 sm:py-9 md:w-1/2 md:px-8 md:py-10 lg:px-12">
             <Suspense
@@ -164,6 +162,7 @@ export default function LoginForm() {
               src="/assets/login.webp"
               alt="Login background"
               fill
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
               priority
             />

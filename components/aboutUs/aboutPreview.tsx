@@ -14,6 +14,7 @@ export default function AboutPreview({ showCTA = true }) {
             src="/assets/about.webp"
             alt="Kakadikro spices"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover"
           />
         </div>

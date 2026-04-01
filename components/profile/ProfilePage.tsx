@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,13 +8,13 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { clearStoredAuth } from "@/lib/auth";
 import {
-  getUserProfile,
   updateUserProfile as updateProfileApi,
   changePassword as changePasswordApi,
+  logoutApi,
 } from "@/redux/api/userApi";
 import {
-  setUser,
   updateUserProfile,
   logoutUser,
 } from "@/redux/slice/userSlice";
@@ -33,6 +33,7 @@ export default function ProfilePage() {
 
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -94,10 +95,19 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    dispatch(logoutUser());
-    router.push("/");
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logoutApi();
+    } catch {
+      // Clear local auth even if the backend cookie is already gone.
+    } finally {
+      clearStoredAuth();
+      dispatch(logoutUser());
+      showAlert({ type: "success", message: "You have been logged out." });
+      router.push("/login");
+      setLoggingOut(false);
+    }
   };
 
   if (!currentUser) {
@@ -132,9 +142,10 @@ export default function ProfilePage() {
 
           <button
             onClick={handleLogout}
+            disabled={loggingOut}
             className="text-sm bg-[var(--brand-brown)] text-white px-4 py-1.5 rounded-md hover:rounded-2xl transition"
           >
-            Logout
+            {loggingOut ? "Logging out..." : "Logout"}
           </button>
         </div>
 
@@ -153,6 +164,7 @@ export default function ProfilePage() {
               <input
                 {...regProfile("name")}
                 placeholder="Enter your full name"
+                autoComplete="name"
                 className={`${inputClassName} ${profileErrors.name
                   ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                   : "border-orange-100"
@@ -170,6 +182,7 @@ export default function ProfilePage() {
               <input
                 value={currentUser.email}
                 disabled
+                autoComplete="email"
                 className="w-full mt-1 px-3 py-2 border rounded-md text-sm bg-gray-100 text-gray-500"
               />
             </div>
@@ -203,6 +216,7 @@ export default function ProfilePage() {
                   type={showCurrent ? "text" : "password"}
                   {...regPwd("currentPassword")}
                   placeholder="Enter current password"
+                  autoComplete="current-password"
                   className={`${inputClassName} pr-10 ${pwdErrors.currentPassword
                     ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                     : "border-orange-100"
@@ -230,6 +244,7 @@ export default function ProfilePage() {
                   type={showNew ? "text" : "password"}
                   {...regPwd("newPassword")}
                   placeholder="Enter new password"
+                  autoComplete="new-password"
                   className={`${inputClassName} pr-10 ${pwdErrors.newPassword
                     ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                     : "border-orange-100"

@@ -6,6 +6,6 @@ export const createContact = async (data: {
     phone: string;
     message: string;
 }) => {
-    const response = await axios.post("/contacts", data);
+    const response = await axios.post("/v1/user/contacts", data);
     return response.data;
 };

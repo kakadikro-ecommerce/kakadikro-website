@@ -9,6 +9,7 @@ import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { fetchProducts } from "@/redux/slice/productSlice";
 import type { Product } from "@/types/product";
+import Loader from "@/components/ui/Loader";
 
 interface ProductGridProps {
   title?: string;
@@ -180,11 +181,19 @@ export default function ProductGrid({
 
         <div className="flex-1">
           {loading ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {Array.from({ length: limit }).map((_, index) => (
-                <ProductSkeletonCard key={index} />
-              ))}
-            </div>
+            showControls ? (
+              <Loader
+                label="Loading products"
+                className="rounded-3xl border border-orange-100 bg-white"
+                size="lg"
+              />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {Array.from({ length: limit }).map((_, index) => (
+                  <ProductSkeletonCard key={index} />
+                ))}
+              </div>
+            )
           ) : error ? (
             <div className="text-red-500">{error}</div>
           ) : (

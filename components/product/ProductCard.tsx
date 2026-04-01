@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { showAlert } from "@/components/ui/alert";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { normalizeImageSrc } from "@/lib/image";
 import { addCartItem, openCart } from "@/redux/slice/cartSlice";
 import type { Product } from "@/types/product";
 
@@ -21,7 +22,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const currentUser = useAppSelector((state) => state.user.currentUser);
   const [selectedWeight, setSelectedWeight] = useState(product.variants?.[0]?.weight ?? "");
 
-  const primaryImage = product.images?.[0]?.url || "/kde-logo-1.png";
+  const primaryImage = normalizeImageSrc(product.images?.[0]?.url, "/kde-logo-1.png");
   const selectedVariant =
     product.variants.find((variant) => variant.weight === selectedWeight) || product.variants?.[0];
 

@@ -3,10 +3,9 @@
 import { ChangeEvent, FormEvent, useState } from "react";
 import Image from "next/image";
 import { Mail, MapPin, Phone } from "lucide-react";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { showAlert } from "@/components/ui/alert";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
+import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { submitContact } from "@/redux/slice/contactSlice";
 import { RootState } from "@/redux/store";
 
@@ -81,7 +80,7 @@ export default function ContactUs() {
     }));
   };
 
-  const dispatch = useDispatch<any>();
+  const dispatch = useAppDispatch();
 
 
   const { loading } = useSelector((state: RootState) => state.contact);
@@ -110,10 +109,15 @@ export default function ContactUs() {
 
       setFormData(initialFormData);
       setErrors({});
-    } catch (error: any) {
+    } catch (error: unknown) {
       showAlert({
         type: "error",
-        message: error || "Failed to send message",
+        message:
+          typeof error === "string"
+            ? error
+            : error instanceof Error
+              ? error.message
+              : "Failed to send message",
       });
     }
   };
@@ -124,8 +128,6 @@ export default function ContactUs() {
 
   return (
     <section className="py-16 sm:py-20">
-      <ToastContainer position="top-right" autoClose={2500} theme="light" />
-
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex rounded-full border border-orange-200 bg-white px-4 py-1 text-sm font-medium text-orange-700">

@@ -88,7 +88,7 @@ const parseCartResponse = (payload: CartResponse | RawCartSummary): CartSummary 
 };
 
 export const getMyCart = async (): Promise<CartSummary> => {
-  const response = await axios.get<CartResponse>("/cart");
+  const response = await axios.get<CartResponse>("/v1/user/cart");
   return parseCartResponse(response.data);
 };
 
@@ -97,7 +97,7 @@ export const addItemToCart = async (payload: {
   weight: string;
   quantity: number;
 }): Promise<CartSummary> => {
-  const response = await axios.post<CartResponse>("/cart/items", payload);
+  const response = await axios.post<CartResponse>("/v1/user/cart/items", payload);
   return parseCartResponse(response.data);
 };
 
@@ -105,16 +105,16 @@ export const updateCartItemQuantity = async (
   itemId: string,
   payload: { quantity: number }
 ): Promise<CartSummary> => {
-  const response = await axios.put<CartResponse>(`/cart/items/${itemId}`, payload);
+  const response = await axios.put<CartResponse>(`/v1/user/cart/items/${itemId}`, payload);
   return parseCartResponse(response.data);
 };
 
 export const removeCartItem = async (itemId: string): Promise<CartSummary> => {
-  const response = await axios.delete<CartResponse>(`/cart/items/${itemId}`);
+  const response = await axios.delete<CartResponse>(`/v1/user/cart/items/${itemId}`);
   return parseCartResponse(response.data);
 };
 
 export const clearCart = async (): Promise<CartSummary> => {
-  const response = await axios.delete<CartResponse>("/cart");
+  const response = await axios.delete<CartResponse>("/v1/user/cart");
   return parseCartResponse(response.data);
 };

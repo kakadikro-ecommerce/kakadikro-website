@@ -1,5 +1,5 @@
 "use client";
-import React, { ChangeEvent, useState, forwardRef } from "react";
+import React, { useState, forwardRef } from "react";
 import { Mail, Lock, Eye, EyeOff, User } from "lucide-react";
 
 interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -15,6 +15,15 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     const inputType = isPassword && showPassword ? "text" : type;
 
     const Icon = type === "email" ? Mail : isPassword ? Lock : type === "text" && label.toLowerCase().includes("name") ? User : null;
+    const autoComplete =
+      props.autoComplete ||
+      (type === "email"
+        ? "email"
+        : isPassword
+          ? "current-password"
+          : label.toLowerCase().includes("name")
+            ? "name"
+            : undefined);
 
     return (
       <div className="group flex flex-col w-full">
@@ -33,6 +42,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
             {...props}
             ref={ref}
             type={inputType}
+            autoComplete={autoComplete}
             placeholder={placeholder}
             className={`w-full bg-stone-100/50 border-b-2 p-3 outline-none transition-all focus:bg-white text-stone-800 rounded-t-md
               ${error ? 'border-red-500' : 'border-stone-200 focus:border-orange-600'}

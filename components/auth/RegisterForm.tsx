@@ -11,8 +11,6 @@ import AuthPageGuard from "./AuthPageGuard";
 import Button from "../ui/Button";
 import InputField from "../ui/Input";
 import { showAlert } from "../ui/alert";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { registerUser } from "@/redux/api/userApi";
 
 function RegisterContent() {
@@ -127,13 +125,13 @@ export default function RegisterForm() {
   return (
     <AuthPageGuard>
       <div className="min-h-screen w-full overflow-x-hidden bg-white px-3 py-4 antialiased sm:px-4 sm:py-6 md:flex md:items-center md:justify-center md:p-6">
-        <ToastContainer theme="light" />
         <div className="mx-auto my-0 flex w-full max-w-[420px] flex-col overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-[0_18px_45px_-24px_rgba(0,0,0,0.22)] sm:max-w-[520px] sm:rounded-3xl md:max-w-6xl md:flex-row md:rounded-[40px] md:shadow-[0_32px_64px_-15px_rgba(0,0,0,0.1)]">
           <div className="relative hidden w-full overflow-hidden border-r border-stone-50 bg-[#faf7f2] md:flex md:min-h-[620px] md:w-1/2 md:items-center md:justify-center md:p-10 lg:p-12 xl:p-16">
             <Image
               src="/assets/register.webp"
               alt="Register background"
               fill
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
               priority
             />

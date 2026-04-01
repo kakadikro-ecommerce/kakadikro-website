@@ -16,9 +16,11 @@ export const showAlert = ({ type, message }: AlertProps) => {
     type: toastType,
     position: "top-right",
     autoClose: 3000,
-    // Use className to target the outer wrapper
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    theme: "light",
     className: `custom-toast custom-toast-${type}`,
-    // If bodyClassName still errors, we target it via CSS selectors in globals.css
-    // to ensure 100% TypeScript compatibility.
   });
 };

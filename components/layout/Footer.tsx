@@ -25,7 +25,7 @@ const Footer = () => {
                 />
               </div>
             </Link>
-            <p className="text-xs sm:text-sm md:text-[14px] text-[#003d4d] leading-relaxed max-w-[260px]">
+            <p className="text-xs sm:text-sm md:text-[14px] text-[#003d4d] leading-relaxed max-w-[260px] font-bold">
               132, Poonam Farm, Navi Pardi, Kamrej, Surat - 394150 Gujarat, India.
             </p>
 
@@ -59,7 +59,7 @@ const Footer = () => {
             <h3 className="text-sm sm:text-base font-semibold text-[#003d4d] mb-3 sm:mb-4">
               Info
             </h3>
-            <ul className="flex flex-col gap-2 text-xs sm:text-sm text-[#003d4d]">
+            <ul className="flex flex-col gap-2 text-xs sm:text-sm text-[#003d4d] font-bold">
               <li><a href="/products" className="hover:translate-x-1 transition inline-block">All Products</a></li>
               <li><a href="/about" className="hover:translate-x-1 transition inline-block">About Us</a></li>
               <li><a href="/contactUs" className="hover:translate-x-1 transition inline-block">Contact Us</a></li>
@@ -71,7 +71,7 @@ const Footer = () => {
             <h3 className="text-sm sm:text-base font-semibold text-[#003d4d] mb-3 sm:mb-4">
               Quick Links
             </h3>
-            <ul className="flex flex-col gap-2 text-xs sm:text-sm text-[#003d4d]">
+            <ul className="flex flex-col gap-2 text-xs sm:text-sm text-[#003d4d] font-bold">
               <li><a href="#">Search</a></li>
               <li><a href="#">Privacy Policy</a></li>
               <li><a href="#">Terms of Service</a></li>

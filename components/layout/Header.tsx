@@ -2,15 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
 
 import CartDrawer from "@/components/cart/CartDrawer";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { clearStoredAuth } from "@/lib/auth";
+import { normalizeImageSrc } from "@/lib/image";
+import { showAlert } from "@/components/ui/alert";
 import { toggleCart } from "@/redux/slice/cartSlice";
 import { logoutUser } from "@/redux/slice/userSlice";
 import { Product } from "@/types/product";
 import { getAllProducts } from "@/redux/api/productApi";
+import { logoutApi } from "@/redux/api/userApi";
+import Loader from "@/components/ui/Loader";
 
 const navItems = [
   { href: "/products", label: "Our Products" },
@@ -20,12 +26,15 @@ const navItems = [
 ];
 
 const Header = () => {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const cartCount = useAppSelector((state) => state.cart.totalItems);
   const currentUser = useAppSelector((state) => state.user.currentUser);
   const dispatch = useAppDispatch();
@@ -49,8 +58,12 @@ const Header = () => {
         setLoading(true);
         const res = await getAllProducts({ search: debouncedSearch, limit: 5 });
         setResults(res.items);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        setResults([]);
+        showAlert({
+          type: "error",
+          message: "Unable to search products right now.",
+        });
       } finally {
         setLoading(false);
       }
@@ -58,6 +71,26 @@ const Header = () => {
 
     fetchProducts();
   }, [debouncedSearch]);
+
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+
+    try {
+      await logoutApi();
+    } catch {
+      // Frontend state should still be cleared if backend session is already invalid.
+    } finally {
+      clearStoredAuth();
+      dispatch(logoutUser());
+      setIsMenuOpen(false);
+      setLogoutLoading(false);
+      showAlert({
+        type: "success",
+        message: "You have been logged out successfully.",
+      });
+      router.push("/login");
+    }
+  };
 
   return (
     <>
@@ -77,7 +110,7 @@ const Header = () => {
               </div>
             </Link>
 
-            <nav className="hidden flex-1 items-center justify-center gap-8 whitespace-nowrap font-[family-name:var(--font-serif-stack)] text-[14px] font-medium text-[#003d4d] lg:flex xl:gap-12 xl:text-[15px]">
+            <nav className="hidden flex-1 items-center justify-center gap-8 whitespace-nowrap font-[family-name:var(--font-serif-stack)] text-[14px] font-bold text-[#003d4d] lg:flex xl:gap-12 xl:text-[15px]">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -100,17 +133,48 @@ const Header = () => {
                   type="text"
                   placeholder="Search products..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setActiveIndex(-1);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!results.length) return;
+
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setActiveIndex((prev) =>
+                        prev < results.length - 1 ? prev + 1 : 0
+                      );
+                    }
+
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setActiveIndex((prev) =>
+                        prev > 0 ? prev - 1 : results.length - 1
+                      );
+                    }
+
+                    if (e.key === "Enter") {
+                      if (activeIndex >= 0) {
+                        const selected = results[activeIndex];
+                        window.location.href = `/products/${selected.slug}`;
+                      }
+                    }
+                  }}
                   className="w-[220px] rounded-full border border-gray-200 bg-[#f7f8f6] py-2.5 pl-10 pr-4 text-sm text-[#003d4d] transition focus:border-green-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
                 />
                 {searchTerm && (
                   <div className="absolute top-full left-0 w-full bg-white shadow-lg rounded-md mt-2 z-50">
                     {loading ? (
-                      <p className="p-3 text-sm">Searching...</p>
+                      <Loader
+                        label="Searching products"
+                        size="sm"
+                        className="min-h-[112px] px-3 py-4"
+                      />
                     ) : results.length === 0 ? (
                       <p className="p-3 text-sm">No products found</p>
                     ) : (
-                      results.map((product) => (
+                      results.map((product, index) => (
                         <Link
                           key={product._id}
                           href={`/products/${product.slug}`}
@@ -118,11 +182,14 @@ const Header = () => {
                             setSearchTerm("");
                             setDebouncedSearch("");
                             setResults([]);
+                            setActiveIndex(-1);
                           }}
-                          className="flex items-center gap-3 p-3 hover:bg-gray-100"
+                          className={`flex items-center gap-3 p-3 cursor-pointer ${index === activeIndex ? "bg-gray-200" : "hover:bg-gray-100"
+                            }`}
                         >
                           <img
-                            src={product.images?.[0]?.url}
+                            src={normalizeImageSrc(product.images?.[0]?.url)}
+                            alt={product.name}
                             className="w-10 h-10 object-cover rounded"
                           />
                           <span>{product.name}</span>
@@ -158,7 +225,7 @@ const Header = () => {
                         <p className="truncate text-xs font-medium text-gray-500">{currentUser.email}</p>
                       </div>
                       <Link href="/profile" className="px-3 py-2 hover:bg-green-50 rounded-md text-sm text-[#003d4d] transition-colors">Profile</Link>
-                      <button onClick={() => { localStorage.removeItem("token"); dispatch(logoutUser()); }} className="px-3 py-2 text-left hover:bg-red-50 rounded-md text-sm text-red-600 transition-colors">Logout</button>
+                      <button onClick={handleLogout} disabled={logoutLoading} className="px-3 py-2 text-left hover:bg-red-50 rounded-md text-sm text-red-600 transition-colors disabled:opacity-60">{logoutLoading ? "Logging out..." : "Logout"}</button>
                     </div>
                   </div>
                 </div>
@@ -217,7 +284,11 @@ const Header = () => {
                 {searchTerm && (
                   <div className="absolute top-full left-0 w-full bg-white shadow-lg rounded-md mt-2 z-50">
                     {loading ? (
-                      <p className="p-3 text-sm">Searching...</p>
+                      <Loader
+                        label="Searching products"
+                        size="sm"
+                        className="min-h-[112px] px-3 py-4"
+                      />
                     ) : results.length === 0 ? (
                       <p className="p-3 text-sm">No products found</p>
                     ) : (
@@ -228,7 +299,8 @@ const Header = () => {
                           className="flex items-center gap-3 p-3 hover:bg-gray-100"
                         >
                           <img
-                            src={product.images?.[0]?.url}
+                            src={normalizeImageSrc(product.images?.[0]?.url)}
+                            alt={product.name}
                             className="w-10 h-10 object-cover rounded"
                           />
                           <span>{product.name}</span>
@@ -289,11 +361,7 @@ const Header = () => {
                       My Profile
                     </Link>
                     <button
-                      onClick={() => {
-                        localStorage.removeItem("token");
-                        dispatch(logoutUser());
-                        setIsMenuOpen(false);
-                      }}
+                      onClick={handleLogout}
                       className="mt-1 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-base font-semibold text-red-600 transition hover:bg-red-100"
                     >
                       Logout

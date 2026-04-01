@@ -3,18 +3,46 @@ import { AuthUser, UserState } from "@/types/user";
 
 const initialState: UserState = {
   currentUser: null,
+  accessToken: null,
+  isAuthReady: false,
+  isAuthChecking: false,
 };
 
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    hydrateUser: (state, action: PayloadAction<AuthUser | null>) => {
+    hydrateUser: (
+      state,
+      action: PayloadAction<{
+        currentUser: AuthUser | null;
+        accessToken: string | null;
+      }>
+    ) => {
+      state.currentUser = action.payload.currentUser;
+      state.accessToken = action.payload.accessToken;
+      state.isAuthReady = true;
+    },
+
+    setUser: (state, action: PayloadAction<AuthUser | null>) => {
       state.currentUser = action.payload;
     },
 
-    setUser: (state, action: PayloadAction<AuthUser>) => {
-      state.currentUser = action.payload;
+    setAccessToken: (state, action: PayloadAction<string | null>) => {
+      state.accessToken = action.payload;
+    },
+
+    setAuthSession: (
+      state,
+      action: PayloadAction<{ user: AuthUser; accessToken: string }>
+    ) => {
+      state.currentUser = action.payload.user;
+      state.accessToken = action.payload.accessToken;
+      state.isAuthReady = true;
+    },
+
+    setAuthChecking: (state, action: PayloadAction<boolean>) => {
+      state.isAuthChecking = action.payload;
     },
 
     updateUserProfile: (state, action: PayloadAction<{ name: string }>) => {
@@ -25,11 +53,9 @@ const userSlice = createSlice({
 
     logoutUser: (state) => {
       state.currentUser = null;
-
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("kd-user");
-        localStorage.removeItem("token");
-      }
+      state.accessToken = null;
+      state.isAuthReady = true;
+      state.isAuthChecking = false;
     },
   },
 });
@@ -37,6 +63,9 @@ const userSlice = createSlice({
 export const {
   hydrateUser,
   setUser,
+  setAccessToken,
+  setAuthSession,
+  setAuthChecking,
   logoutUser,
   updateUserProfile,
 } = userSlice.actions;

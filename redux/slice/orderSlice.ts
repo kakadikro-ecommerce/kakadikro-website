@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/tool
 import { AxiosError } from "axios";
 
 import * as orderApi from "@/redux/api/orderApi";
+import type { RootState } from "@/redux/store";
 import type {
   CreateOrderPayload,
   Order,
@@ -98,10 +99,35 @@ export const updateExistingOrder = createAsyncThunk<
 export const cancelExistingOrder = createAsyncThunk<
   Order,
   string,
-  { rejectValue: string }
->("order/cancelExistingOrder", async (orderId, { rejectWithValue }) => {
+  { state: RootState; rejectValue: string }
+>("order/cancelExistingOrder", async (orderId, { getState, rejectWithValue }) => {
   try {
-    return await orderApi.cancelOrder(orderId);
+    const cancelledOrder = await orderApi.cancelOrder(orderId);
+    const state = getState();
+    const existingOrder =
+      state.order.currentOrder?.id === orderId
+        ? state.order.currentOrder
+        : state.order.orders.find((entry) => entry.id === orderId);
+
+    const trackedOrderNumber =
+      cancelledOrder.orderNumber || existingOrder?.orderNumber;
+
+    if (trackedOrderNumber) {
+      try {
+        return await orderApi.trackOrder(trackedOrderNumber);
+      } catch {
+        return {
+          ...existingOrder,
+          ...cancelledOrder,
+          items:
+            cancelledOrder.items.length > 0
+              ? cancelledOrder.items
+              : existingOrder?.items || [],
+        } as Order;
+      }
+    }
+
+    return cancelledOrder;
   } catch (error) {
     return rejectWithValue(
       getErrorMessage(error, "Failed to cancel the order.")

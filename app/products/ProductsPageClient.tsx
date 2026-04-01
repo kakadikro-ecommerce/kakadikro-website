@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import ProductGrid from "@/components/product/ProductGrid";
 import HeroSection from "@/components/ui/HeroSection";
 import Slider from "@/components/ui/Slider";
+import FAQSection from "@/components/ui/FaqSection";
+import { trackOrderFAQs } from "@/utils/constants";
 
 export default function ProductsPageClient() {
   const router = useRouter();
@@ -26,6 +28,9 @@ export default function ProductsPageClient() {
           description="Browse every spice category with dedicated sections for whole spices, blended spices, and powder spices."
           limit={12}
           showControls
+        />
+        <FAQSection
+          faqs={trackOrderFAQs}
         />
       </main>
     </>

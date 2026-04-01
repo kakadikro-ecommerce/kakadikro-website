@@ -7,9 +7,12 @@ export interface User {
 }
 
 export interface AuthUser extends User {
-  token: string;
+  id?: string;
 }
 
 export interface UserState {
   currentUser: AuthUser | null;
+  accessToken: string | null;
+  isAuthReady: boolean;
+  isAuthChecking: boolean;
 }

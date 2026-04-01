@@ -1,4 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
+import { injectStore } from "@/lib/axios";
 
 import cartReducer from "@/redux/slice/cartSlice";
 import orderReducer from "@/redux/slice/orderSlice";
@@ -15,6 +16,8 @@ export const store = configureStore({
     contact: contactReducer,
   },
 });
+
+injectStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

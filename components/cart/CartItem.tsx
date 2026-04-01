@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
+import { normalizeImageSrc } from "@/lib/image";
 
 import type { CartItem as CartItemType } from "@/types/product";
 
@@ -29,7 +30,7 @@ export default function CartItem({
           className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-orange-50"
         >
           <Image
-            src={item.image || "/assets/kde-logo.webp"}
+            src={normalizeImageSrc(item.image, "/assets/kde-logo.webp")}
             alt={item.name}
             fill
             sizes="80px"
