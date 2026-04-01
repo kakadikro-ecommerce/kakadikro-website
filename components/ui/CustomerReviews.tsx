@@ -60,7 +60,7 @@ const reviews: Review[] = [
     name: "Rakesh Patel",
     title: "Authentic Taste!",
     review:
-      "Kakadikro Masale brings back the flavor of the hand-ground spices we grew up with. The aroma fills the kitchen instantly.",
+      "Kakadikro spices brings back the flavor of the hand-ground spices we grew up with. The aroma fills the kitchen instantly.",
     image: createAvatarDataUri("Rakesh Patel", "#F97316", "#FDBA74", "#7C2D12"),
   },
   {
@@ -195,11 +195,10 @@ export default function CustomerReviews() {
                       type="button"
                       onClick={() => setCurrent(index)}
                       aria-label={`Go to review from ${review.name}`}
-                      className={`h-2.5 rounded-full transition-all duration-300 ${
-                        index === current
+                      className={`h-2.5 rounded-full transition-all duration-300 ${index === current
                           ? "w-10 bg-orange-500"
                           : "w-2.5 bg-orange-200 hover:bg-orange-300"
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>

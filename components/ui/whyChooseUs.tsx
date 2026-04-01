@@ -3,6 +3,7 @@
 import { Award, Package, Smile } from "lucide-react";
 
 export default function WhyChooseUs() {
+  const badge = "Why Choose Us";
   const items = [
     {
       icon: Award,
@@ -25,11 +26,16 @@ export default function WhyChooseUs() {
   return (
     <section className="py-12 mt-12">
       <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-            Why Shop With Us
-          </h2>
-          <p className="text-gray-600 mt-2 text-sm md:text-base">
-            Discover what makes our products stand out from the rest
+        {badge && (
+          <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-700 mb-4">
+            {badge}
+          </span>
+        )}
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+          Why Shop With Us
+        </h2>
+        <p className="text-gray-600 mt-2 text-sm md:text-base">
+          Discover what makes our products stand out from the rest
           </p>
         </div>
       <div className="max-w-6xl mx-auto px-4 grid gap-8 sm:grid-cols-2 md:grid-cols-3">

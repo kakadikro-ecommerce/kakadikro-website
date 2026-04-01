@@ -1,33 +1,73 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-
-interface UserProfile {
-  email: string;
-}
-
-interface UserState {
-  currentUser: UserProfile | null;
-}
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { AuthUser, UserState } from "@/types/user";
 
 const initialState: UserState = {
   currentUser: null,
+  accessToken: null,
+  isAuthReady: false,
+  isAuthChecking: false,
 };
 
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    hydrateUser: (state, action: PayloadAction<UserProfile | null>) => {
+    hydrateUser: (
+      state,
+      action: PayloadAction<{
+        currentUser: AuthUser | null;
+        accessToken: string | null;
+      }>
+    ) => {
+      state.currentUser = action.payload.currentUser;
+      state.accessToken = action.payload.accessToken;
+      state.isAuthReady = true;
+    },
+
+    setUser: (state, action: PayloadAction<AuthUser | null>) => {
       state.currentUser = action.payload;
     },
-    setUser: (state, action: PayloadAction<UserProfile>) => {
-      state.currentUser = action.payload;
+
+    setAccessToken: (state, action: PayloadAction<string | null>) => {
+      state.accessToken = action.payload;
     },
+
+    setAuthSession: (
+      state,
+      action: PayloadAction<{ user: AuthUser; accessToken: string }>
+    ) => {
+      state.currentUser = action.payload.user;
+      state.accessToken = action.payload.accessToken;
+      state.isAuthReady = true;
+    },
+
+    setAuthChecking: (state, action: PayloadAction<boolean>) => {
+      state.isAuthChecking = action.payload;
+    },
+
+    updateUserProfile: (state, action: PayloadAction<{ name: string }>) => {
+      if (state.currentUser) {
+        state.currentUser.name = action.payload.name;
+      }
+    },
+
     logoutUser: (state) => {
       state.currentUser = null;
+      state.accessToken = null;
+      state.isAuthReady = true;
+      state.isAuthChecking = false;
     },
   },
 });
 
-export const { hydrateUser, setUser, logoutUser } = userSlice.actions;
+export const {
+  hydrateUser,
+  setUser,
+  setAccessToken,
+  setAuthSession,
+  setAuthChecking,
+  logoutUser,
+  updateUserProfile,
+} = userSlice.actions;
 
 export default userSlice.reducer;

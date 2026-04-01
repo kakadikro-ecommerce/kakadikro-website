@@ -3,32 +3,30 @@
 import { ChangeEvent, FormEvent, useState } from "react";
 import Image from "next/image";
 import { Mail, MapPin, Phone } from "lucide-react";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-
 import { showAlert } from "@/components/ui/alert";
+import { useSelector } from "react-redux";
+import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { submitContact } from "@/redux/slice/contactSlice";
+import { RootState } from "@/redux/store";
 
 interface ContactFormData {
   name: string;
   email: string;
-  contactNumber: string;
-  subject: string;
+  phone: string;
   message: string;
 }
 
 interface ContactFormErrors {
   name?: string;
   email?: string;
-  contactNumber?: string;
-  subject?: string;
+  phone?: string;
   message?: string;
 }
 
 const initialFormData: ContactFormData = {
   name: "",
   email: "",
-  contactNumber: "",
-  subject: "",
+  phone: "",
   message: "",
 };
 
@@ -51,10 +49,10 @@ export default function ContactUs() {
       nextErrors.email = "Please enter a valid email address.";
     }
 
-    if (!values.contactNumber.trim()) {
-      nextErrors.contactNumber = "Contact number is required.";
-    } else if (!phonePattern.test(values.contactNumber.trim())) {
-      nextErrors.contactNumber = "Contact number must be exactly 10 digits.";
+    if (!values.phone.trim()) {
+      nextErrors.phone = "Contact number is required.";
+    } else if (!phonePattern.test(values.phone.trim())) {
+      nextErrors.phone = "Contact number must be exactly 10 digits.";
     }
 
     if (!values.message.trim()) {
@@ -69,7 +67,7 @@ export default function ContactUs() {
   ) => {
     const { name, value } = event.target;
     const nextValue =
-      name === "contactNumber" ? value.replace(/\D/g, "").slice(0, 10) : value;
+      name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value;
 
     setFormData((prev) => ({
       ...prev,
@@ -82,7 +80,12 @@ export default function ContactUs() {
     }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const dispatch = useAppDispatch();
+
+
+  const { loading } = useSelector((state: RootState) => state.contact);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const validationErrors = validateForm(formData);
@@ -96,22 +99,35 @@ export default function ContactUs() {
       return;
     }
 
-    showAlert({
-      type: "success",
-      message: "Message sent successfully!",
-    });
+    try {
+      await dispatch(submitContact(formData)).unwrap();
 
-    setFormData(initialFormData);
-    setErrors({});
+      showAlert({
+        type: "success",
+        message: "Message sent successfully!",
+      });
+
+      setFormData(initialFormData);
+      setErrors({});
+    } catch (error: unknown) {
+      showAlert({
+        type: "error",
+        message:
+          typeof error === "string"
+            ? error
+            : error instanceof Error
+              ? error.message
+              : "Failed to send message",
+      });
+    }
   };
 
   const inputClassName =
     "w-full rounded-2xl border bg-white px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
 
+
   return (
     <section className="py-16 sm:py-20">
-      <ToastContainer position="top-right" autoClose={2500} theme="light" />
-
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex rounded-full border border-orange-200 bg-white px-4 py-1 text-sm font-medium text-orange-700">
@@ -159,7 +175,7 @@ export default function ContactUs() {
                   <div>
                     <p className="text-sm font-semibold">Address</p>
                     <p className="mt-1 text-sm leading-6 text-orange-50/85">
-                      Kakadikro Masale, Ahmedabad, Gujarat, India
+                      Kakadikro spices, Ahmedabad, Gujarat, India
                     </p>
                   </div>
                 </div>
@@ -183,7 +199,7 @@ export default function ContactUs() {
                   <div>
                     <p className="text-sm font-semibold">Email</p>
                     <p className="mt-1 text-sm leading-6 text-orange-50/85">
-                      hello@kakadikromasale.com
+                      hello@kakadikrospices.com
                     </p>
                   </div>
                 </div>
@@ -218,8 +234,8 @@ export default function ContactUs() {
                     onChange={handleChange}
                     placeholder="Enter your full name"
                     className={`${inputClassName} ${errors.name
-                        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-                        : "border-orange-100"
+                      ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                      : "border-orange-100"
                       }`}
                   />
                   {errors.name ? (
@@ -243,8 +259,8 @@ export default function ContactUs() {
                       onChange={handleChange}
                       placeholder="you@example.com"
                       className={`${inputClassName} ${errors.email
-                          ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-                          : "border-orange-100"
+                        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                        : "border-orange-100"
                         }`}
                     />
                     {errors.email ? (
@@ -254,50 +270,31 @@ export default function ContactUs() {
 
                   <div>
                     <label
-                      htmlFor="contactNumber"
+                      htmlFor="phone"
                       className="mb-2 block text-sm font-medium text-slate-700"
                     >
                       Contact Number
                     </label>
                     <input
-                      id="contactNumber"
-                      name="contactNumber"
+                      id="phone"
+                      name="phone"
                       type="tel"
                       inputMode="numeric"
-                      value={formData.contactNumber}
+                      value={formData.phone}
                       onChange={handleChange}
                       placeholder="10-digit mobile number"
-                      className={`${inputClassName} ${errors.contactNumber
-                          ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-                          : "border-orange-100"
+                      className={`${inputClassName} ${errors.phone
+                        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                        : "border-orange-100"
                         }`}
                     />
-                    {errors.contactNumber ? (
+                    {errors.phone ? (
                       <p className="mt-2 text-sm text-red-500">
-                        {errors.contactNumber}
+                        {errors.phone}
                       </p>
                     ) : null}
                   </div>
                 </div>
-
-                <div>
-                  <label
-                    htmlFor="subject"
-                    className="mb-2 block text-sm font-medium text-slate-700"
-                  >
-                    Subject
-                  </label>
-                  <input
-                    id="subject"
-                    name="subject"
-                    type="text"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    placeholder="What would you like to discuss?"
-                    className={`${inputClassName} border-orange-100`}
-                  />
-                </div>
-
                 <div>
                   <label
                     htmlFor="message"
@@ -313,8 +310,8 @@ export default function ContactUs() {
                     onChange={handleChange}
                     placeholder="Tell us how we can help you..."
                     className={`${inputClassName} min-h-[140px] resize-none ${errors.message
-                        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-                        : "border-orange-100"
+                      ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                      : "border-orange-100"
                       }`}
                   />
                   {errors.message ? (
@@ -324,9 +321,14 @@ export default function ContactUs() {
 
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-orange-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700"
+                  disabled={loading}
+                  className={`inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition
+                  ${loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-[#7A330F] hover:bg-[#5f2609]"
+                    }`}
                 >
-                  Send Message
+                  {loading ? "Sending message..." : "Send Message"}
                 </button>
               </form>
             </div>

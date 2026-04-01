@@ -1,21 +1,21 @@
-"use client";
+import type { Metadata } from "next";
 
-import ProductGrid from "@/components/product/ProductGrid";
-import Carousel from "@/components/ui/carousel";
-import CustomerReviews from "@/components/ui/CustomerReviews";
-import Slider from "@/components/ui/Slider";
-import WhyChooseUs from "@/components/ui/whyChooseUs";
-import AboutPreview from "@/components/aboutUs/aboutPreview";
+import HomePageClient from "./HomePageClient";
+import { buildMetadata } from "./seo";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Authentic Gujarati Masala & Spices",
+  description:
+    "Shop handcrafted Gujarati masala blends, whole spices, and flavorful pantry essentials from Kaka Dikro.",
+  path: "/",
+  keywords: [
+    "Gujarati masala",
+    "authentic Indian spices",
+    "Kaka Dikro spices",
+    "masala online store",
+  ],
+});
 
 export default function Page() {
-  return (
-    <main>
-      <Carousel />
-      <Slider />
-      <WhyChooseUs />
-      <ProductGrid limit={4} showViewAllButton />
-      <AboutPreview />
-      <CustomerReviews />
-    </main>
-  );
+  return <HomePageClient />;
 }

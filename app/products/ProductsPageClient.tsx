@@ -1,10 +1,14 @@
 "use client";
 
-import ProductGrid from "@/components/product/ProductGrid";
-import HeroSection from "@/components/ui/HeroSection";
 import { useRouter } from "next/navigation";
 
-export default function ProductsPage() {
+import ProductGrid from "@/components/product/ProductGrid";
+import HeroSection from "@/components/ui/HeroSection";
+import Slider from "@/components/ui/Slider";
+import FAQSection from "@/components/ui/FaqSection";
+import { trackOrderFAQs } from "@/utils/constants";
+
+export default function ProductsPageClient() {
   const router = useRouter();
 
   return (
@@ -15,13 +19,18 @@ export default function ProductsPage() {
         ctaText="Contact Us"
         onCtaClick={() => router.push("/contactUs")}
       />
+      <Slider />
 
-      <main className="bg-gradient-to-b from-orange-50 via-white to-white">
+      <main>
         <ProductGrid
           badge="Our Products"
           title="Explore the complete Masala collection"
           description="Browse every spice category with dedicated sections for whole spices, blended spices, and powder spices."
-          groupByCategory
+          limit={12}
+          showControls
+        />
+        <FAQSection
+          faqs={trackOrderFAQs}
         />
       </main>
     </>

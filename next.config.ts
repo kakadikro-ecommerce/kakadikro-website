@@ -11,7 +11,16 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "**",
       },
-    ],
+    ], 
+  },
+   async redirects() {
+    return [
+      {
+        source: "/product/:slug",
+        destination: "/products/:slug",
+        permanent: true,
+      },
+    ];
   },
 };
 

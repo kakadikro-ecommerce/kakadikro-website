@@ -22,6 +22,7 @@ export default function HeroSection({
                 alt={title}
                 fill
                 priority
+                sizes="100vw"
                 className="object-cover"
             />
 
@@ -35,7 +36,7 @@ export default function HeroSection({
                 {ctaText && (
                     <button
                         onClick={onCtaClick}
-                        className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm md:text-base shadow-lg transition-all duration-300 mt-8"
+                        className="px-6 py-3 bg-[#7A330F] hover:bg-[#5f2609] text-white rounded-xl text-sm md:text-base shadow-lg transition-all duration-300 mt-8"
                     >
                         {ctaText}
                     </button>
