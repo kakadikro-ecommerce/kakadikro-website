@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
 
+import { addCartItem, clearCartItems, fetchCart, removeCartItem, updateCartItem } from "@/redux/slice/cartSlice";
 import * as orderApi from "@/redux/api/orderApi";
 import type { RootState } from "@/redux/store";
 import type {
@@ -238,6 +239,29 @@ const orderSlice = createSlice({
       .addCase(cancelExistingOrder.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload ?? "Failed to cancel the order.";
+      })
+      .addCase(fetchCart.fulfilled, (state, action) => {
+        if (action.payload.totalItems > 0) {
+          state.currentOrder = null;
+        }
+      })
+      .addCase(addCartItem.fulfilled, (state, action) => {
+        if (action.payload.totalItems > 0) {
+          state.currentOrder = null;
+        }
+      })
+      .addCase(updateCartItem.fulfilled, (state, action) => {
+        if (action.payload.totalItems > 0) {
+          state.currentOrder = null;
+        }
+      })
+      .addCase(removeCartItem.fulfilled, (state, action) => {
+        if (action.payload.totalItems > 0) {
+          state.currentOrder = null;
+        }
+      })
+      .addCase(clearCartItems.fulfilled, (state) => {
+        state.currentOrder = null;
       });
   },
 });

@@ -31,7 +31,6 @@ import {
   cancelExistingOrder,
   clearOrderError,
   createNewOrder,
-  resetCurrentOrder,
   updateExistingOrder,
 } from "@/redux/slice/orderSlice";
 import {
@@ -175,12 +174,6 @@ export default function CheckoutClient() {
       void dispatch(fetchCart());
     }
   }, [cart.items.length, currentUser, dispatch, router]);
-
-  useEffect(() => {
-    if (cart.totalItems > 0 && order) {
-      dispatch(resetCurrentOrder());
-    }
-  }, [cart.totalItems, dispatch, order]);
 
   useEffect(() => {
     reset(getDefaultValues(order?.shippingAddress));
