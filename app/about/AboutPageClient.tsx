@@ -17,7 +17,7 @@ export default function AboutPageClient() {
     <main>
       <HeroSection
         title="About Us"
-        image="/assets/abouthero.webp"
+        image="/assets/aboutHero.webp"
         ctaText="Contact Us"
         onCtaClick={() => router.push("/contactUs")}
       />
