@@ -48,7 +48,7 @@ export interface ShipmentDetails {
 
 export interface Order {
   id: string;
-  orderNumber: string;
+  orderNumber?: string;
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   paymentMethod: PaymentMethod;

@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-
 import ProductDetails from "@/components/product/ProductDetails";
 import ProductGrid from "@/components/product/ProductGrid";
+import ProductReviewsSection from "@/components/reviews/ProductReviewsSection";
 import HeroSection from "@/components/ui/HeroSection";
 import Loader from "@/components/ui/Loader";
 import Slider from "@/components/ui/Slider";
@@ -104,7 +104,13 @@ export default function ProductPageClient() {
         limit={4}
         showViewAllButton
         products={relatedProducts}
-      />
+        />
+          {selectedProduct.id || selectedProduct._id ? (
+            <ProductReviewsSection
+              productId={selectedProduct.id || selectedProduct._id || ""}
+              showStaticReviews={false}
+            />
+          ) : null}
       <FAQSection
         faqs={trackOrderFAQs}
       />

@@ -50,7 +50,7 @@ export const getAllProducts = async (params?: {
   page?: number;
   limit?: number;
 }) => {
-  const response = await axios.get("/v1/products", { params });
+  const response = await axios.get("/v1/user/products", { params });
 
   return {
     items: parseProductsResponse(response.data),
@@ -60,10 +60,10 @@ export const getAllProducts = async (params?: {
 
 export const getProductBySlug = async (slug: string): Promise<Product> => {
   try {
-    const response = await axios.get<Product | ProductResponse>(`/v1/products/${slug}`);
+    const response = await axios.get<Product | ProductResponse>(`/v1/user/products/${slug}`);
     return parseProductResponse(response.data);
   } catch {
-    const fallbackResponse = await axios.get<Product | ProductResponse>(`/v1/products/${slug}`);
+    const fallbackResponse = await axios.get<Product | ProductResponse>(`/v1/user/products/${slug}`);
     return parseProductResponse(fallbackResponse.data);
   }
 };

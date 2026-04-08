@@ -123,7 +123,7 @@ const mapOrderItem = (item: RawOrderItem): OrderItem => {
 
 const mapOrder = (order: RawOrder): Order => ({
   id: order._id || order.id || "",
-  orderNumber: order.orderNumber || "",
+  orderNumber: order.orderNumber,
   items: Array.isArray(order.items) ? order.items.map(mapOrderItem) : [],
   shippingAddress: mapShippingAddress(order.shippingAddress),
   paymentMethod: normalizePaymentMethod(order.paymentMethod),
@@ -172,8 +172,12 @@ export const updateOrder = async (id: string, payload: { shippingAddress?: Shipp
   return parseOrderResponse(response.data);
 };
 
-export const trackOrder = async (orderNumber: string): Promise<Order> => {
-  const response = await axios.get<RawOrderResponse>(`/v1/user/orders/tracking/${orderNumber}`);
+export const trackOrder = async (id: string): Promise<Order> => {
+  if (!id?.trim()) {
+    throw new Error("Order id is required.");
+  }
+
+  const response = await axios.get<RawOrderResponse>(`/v1/user/orders/tracking/${id}`);
   return parseOrderResponse(response.data);
 };
 

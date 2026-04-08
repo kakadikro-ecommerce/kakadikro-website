@@ -29,7 +29,8 @@ function LoginContent() {
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
-    mode: "onTouched",
+    mode: "onChange",
+    reValidateMode: "onChange",
   });
 
   useEffect(() => {

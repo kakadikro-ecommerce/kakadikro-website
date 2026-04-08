@@ -2,17 +2,17 @@ import axios from "@/lib/axios";
 import type { LoginInput, RegisterInput } from "@/lib/validations/auth";
 
 export const registerUser = async (credentials: RegisterInput) => {
-    const response = await axios.post("/v1/auth/register", credentials);
+    const response = await axios.post("/v1/user/auth/register", credentials);
     return response.data;
 };
 
 export const loginUser = async (credentials: LoginInput) => {
-    const response = await axios.post("/v1/auth/login", credentials);
+    const response = await axios.post("/v1/user/auth/login", credentials);
     return response.data;
 };
 
 export const logoutApi = async () => {
-    const response = await axios.post("/v1/auth/logout");
+    const response = await axios.post("/v1/user/auth/logout");
     return response.data;
 };
 

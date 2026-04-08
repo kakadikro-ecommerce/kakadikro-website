@@ -75,9 +75,9 @@ export const fetchOrderById = createAsyncThunk<
   Order,
   string,
   { rejectValue: string }
->("order/fetchOrderById", async (orderNumber, { rejectWithValue }) => {
+>("order/fetchOrderById", async (id, { rejectWithValue }) => {
   try {
-    return await orderApi.trackOrder(orderNumber);
+    return await orderApi.trackOrder(id);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error, "Failed to fetch the order."));
   }

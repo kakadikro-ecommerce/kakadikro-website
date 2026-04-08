@@ -27,6 +27,7 @@ import {
 import { showAlert } from "@/components/ui/alert";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import TrackOrderItemReview from "@/components/reviews/TrackOrderItemReview";
 import { normalizeImageSrc } from "@/lib/image";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
 import {
@@ -67,15 +68,15 @@ const fieldConfig: Array<{
   placeholder: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { name: "fullName", label: "Full name", placeholder: "Enter recipient name", icon: UserRound },
-  { name: "phone", label: "Phone number", placeholder: "10-digit mobile number", icon: Phone },
-  { name: "addressLine1", label: "Address line 1", placeholder: "House no, street, area", icon: House },
-  { name: "addressLine2", label: "Address line 2", placeholder: "Apartment, landmark (optional)", icon: MapPlus },
-  { name: "city", label: "City", placeholder: "City", icon: MapPin },
-  { name: "state", label: "State", placeholder: "State", icon: Map },
-  { name: "postalCode", label: "Postal code", placeholder: "6-digit PIN code", icon: Mailbox },
-  { name: "country", label: "Country", placeholder: "Country", icon: MapPin },
-];
+    { name: "fullName", label: "Full name", placeholder: "Enter recipient name", icon: UserRound },
+    { name: "phone", label: "Phone number", placeholder: "10-digit mobile number", icon: Phone },
+    { name: "addressLine1", label: "Address line 1", placeholder: "House no, street, area", icon: House },
+    { name: "addressLine2", label: "Address line 2", placeholder: "Apartment, landmark (optional)", icon: MapPlus },
+    { name: "city", label: "City", placeholder: "City", icon: MapPin },
+    { name: "state", label: "State", placeholder: "State", icon: Map },
+    { name: "postalCode", label: "Postal code", placeholder: "6-digit PIN code", icon: Mailbox },
+    { name: "country", label: "Country", placeholder: "Country", icon: MapPin },
+  ];
 
 const formatDate = (value?: string) => {
   if (!value) return "N/A";
@@ -121,11 +122,10 @@ function AddressField({
         {label}
       </span>
       <div
-        className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 transition ${
-          error
+        className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 transition ${error
             ? "border-rose-300"
             : "border-[#d9ebe6] focus-within:border-[#0d5d6c] focus-within:ring-2 focus-within:ring-[#0d5d6c]/10"
-        }`}
+          }`}
       >
         <Icon className={`h-4 w-4 shrink-0 ${error ? "text-rose-500" : "text-[#0d5d6c]"}`} />
         <input
@@ -210,10 +210,10 @@ const TrackOrder = () => {
     setIsEditingAddress(false);
   };
 
-  const handleSelectOrder = (orderNumber: string, orderId: string) => {
+  const handleSelectOrder = (orderId: string) => {
     setDetailsLoadingId(orderId);
 
-    dispatch(fetchOrderById(orderNumber))
+    dispatch(fetchOrderById(orderId))
       .unwrap()
       .then((res) => {
         setSelectedOrder(res);
@@ -317,34 +317,38 @@ const TrackOrder = () => {
 
               <label className="flex cursor-pointer items-center gap-1">
                 <input type="radio" checked readOnly />
-                Order Number
+                Order ID
               </label>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-center">
+
               <input
                 type="text"
-                placeholder="Enter Order Number"
+                placeholder="Enter Order ID"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="w-full sm:flex-1 md:flex-none md:w-[55%] rounded-xl border border-[#c7ddda] px-4 py-3 text-sm text-[#16343c] outline-none transition focus:border-[#003d4d] focus:ring-2 focus:ring-[#003d4d]/15"
+                className="w-full md:w-[45%] rounded-xl border border-[#c7ddda] px-4 py-3 text-sm text-[#16343c] outline-none transition focus:border-[#003d4d] focus:ring-2 focus:ring-[#003d4d]/15"
               />
 
-              <button
-                onClick={handleSearch}
-                disabled={loading}
-                className="flex items-center text-sm justify-center gap-2 rounded-xl bg-[#003d4d] px-4 text-white transition hover:rounded-full disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Search size={14} />
-                {loading && !showMyOrders ? "Tracking..." : "Track"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSearch}
+                  disabled={loading}
+                  className="flex items-center text-sm justify-center gap-2 rounded-xl bg-[#003d4d] px-3 py-2 text-white transition hover:rounded-full disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Search size={14} />
+                  {loading && !showMyOrders ? "Tracking..." : "Track"}
+                </button>
 
-              <button
-                onClick={handleViewMyOrders}
-                className="flex items-center text-sm justify-center rounded-xl bg-[#612709] px-2 text-white transition hover:rounded-full"
-              >
-                Order History
-              </button>
+                <button
+                  onClick={handleViewMyOrders}
+                  className="flex items-center text-sm justify-center rounded-xl bg-[#612709] px-3 py-2 text-white transition hover:rounded-full"
+                >
+                  Order History
+                </button>
+              </div>
+
             </div>
 
             <p className="flex items-center justify-center text-xs text-gray-500">
@@ -367,100 +371,100 @@ const TrackOrder = () => {
           >
             {showMyOrders ? (
               <aside className="rounded-3xl border border-[#d9ebe6] bg-white p-4 shadow-[0_18px_60px_rgba(0,61,77,0.08)] sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-[#003d4d]">
-                    My Orders
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Open any order to see full details.
-                  </p>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold text-[#003d4d]">
+                      My Orders
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Open any order to see full details.
+                    </p>
+                  </div>
+                  <div className="rounded-full bg-[#eef7f4] px-3 py-1 text-xs font-medium text-[#0d5d6c]">
+                    {orders.length} orders
+                  </div>
                 </div>
-                <div className="rounded-full bg-[#eef7f4] px-3 py-1 text-xs font-medium text-[#0d5d6c]">
-                  {orders.length} orders
-                </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={handleCloseOrderHistory}
-                className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#d9ebe6] px-3 py-2 text-sm font-medium text-[#003d4d] transition hover:border-[#98c8bd] hover:bg-[#f6fbf9]"
-              >
-                <X className="h-4 w-4" />
-                Close
-              </button>
+                <button
+                  type="button"
+                  onClick={handleCloseOrderHistory}
+                  className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#d9ebe6] px-3 py-2 text-sm font-medium text-[#003d4d] transition hover:border-[#98c8bd] hover:bg-[#f6fbf9]"
+                >
+                  <X className="h-4 w-4" />
+                  Close
+                </button>
 
-              {loading && showMyOrders && orders.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#c7ddda] px-4 py-8 text-center text-sm text-gray-500">
-                  Loading your orders...
-                </div>
-              ) : orders.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#c7ddda] px-4 py-8 text-center">
-                  <ShoppingBag className="mx-auto mb-3 h-8 w-8 text-[#7aa2a9]" />
-                  <p className="text-sm font-medium text-[#003d4d]">
-                    No orders found yet
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Your recent and previous orders will appear here.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                  {orders.map((ord) => {
-                    const isActive = activeOrder?.id === ord.id;
-                    const isLoadingCard = detailsLoadingId === ord.id;
+                {loading && showMyOrders && orders.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#c7ddda] px-4 py-8 text-center text-sm text-gray-500">
+                    Loading your orders...
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#c7ddda] px-4 py-8 text-center">
+                    <ShoppingBag className="mx-auto mb-3 h-8 w-8 text-[#7aa2a9]" />
+                    <p className="text-sm font-medium text-[#003d4d]">
+                      No orders found yet
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Your recent and previous orders will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                    {orders.map((ord) => {
+                      const isActive = activeOrder?.id === ord.id;
+                      const isLoadingCard = detailsLoadingId === ord.id;
 
-                    return (
-                      <button
-                        key={ord.id}
-                        type="button"
-                        onClick={() => handleSelectOrder(ord.orderNumber, ord.id)}
-                        className={`w-full rounded-2xl border p-4 text-left transition ${isActive
-                          ? "border-[#0d5d6c] bg-[#f2fbf8] shadow-sm"
-                          : "border-[#d9ebe6] bg-white hover:border-[#98c8bd] hover:bg-[#fbfefd]"
-                          }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm text-gray-500">Order ID</p>
-                            <p className="font-semibold text-[#003d4d]">
-                              {ord.orderNumber}
-                            </p>
+                      return (
+                        <button
+                          key={ord.id}
+                          type="button"
+                          onClick={() => handleSelectOrder(ord.id)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${isActive
+                            ? "border-[#0d5d6c] bg-[#f2fbf8] shadow-sm"
+                            : "border-[#d9ebe6] bg-white hover:border-[#98c8bd] hover:bg-[#fbfefd]"
+                            }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm text-gray-500">Order ID</p>
+                              <p className="font-semibold text-[#003d4d]">
+                                {ord.orderNumber}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusStyles[ord.orderStatus]}`}
+                            >
+                              {ord.orderStatus}
+                            </span>
                           </div>
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusStyles[ord.orderStatus]}`}
-                          >
-                            {ord.orderStatus}
-                          </span>
-                        </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.16em] text-gray-400">
-                              Ordered
-                            </p>
-                            <p className="mt-1 font-medium text-[#26444b]">
-                              {formatDate(ord.createdAt)}
-                            </p>
+                          <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.16em] text-gray-400">
+                                Ordered
+                              </p>
+                              <p className="mt-1 font-medium text-[#26444b]">
+                                {formatDate(ord.createdAt)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.16em] text-gray-400">
+                                Amount
+                              </p>
+                              <p className="mt-1 font-medium text-[#26444b]">
+                                {formatCurrency(ord.totalAmount)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.16em] text-gray-400">
-                              Amount
-                            </p>
-                            <p className="mt-1 font-medium text-[#26444b]">
-                              {formatCurrency(ord.totalAmount)}
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="mt-4 text-xs font-medium text-[#0d5d6c]">
-                          {isLoadingCard ? "Opening details..." : "View full details"}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                          <div className="mt-4 text-xs font-medium text-[#0d5d6c]">
+                            {isLoadingCard ? "Opening details..." : "View full details"}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </aside>
             ) : null}
 
@@ -633,177 +637,172 @@ const TrackOrder = () => {
                     )}
                   </div>
 
-                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="space-y-6">
                     <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <h3 className="text-lg font-semibold text-[#003d4d]">
+                          Delivery address
+                        </h3>
+                        {canEditAddress && !isEditingAddress ? (
+                          <button
+                            type="button"
+                            onClick={handleStartAddressEdit}
+                            disabled={actionLoading}
+                            className="inline-flex items-center gap-2 rounded-full border border-[#d9ebe6] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#0d5d6c] transition hover:border-[#98c8bd] hover:bg-[#f6fbf9] disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Edit delivery address"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {isEditingAddress ? (
+                        <form
+                          onSubmit={handleSubmit(handleUpdateAddress)}
+                          className="mt-4 space-y-5"
+                        >
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            {fieldConfig.map((field) => (
+                              <Controller
+                                key={field.name}
+                                name={field.name}
+                                control={control}
+                                render={({ field: controllerField }) => (
+                                  <AddressField
+                                    {...controllerField}
+                                    value={controllerField.value ?? ""}
+                                    label={field.label}
+                                    placeholder={field.placeholder}
+                                    icon={field.icon}
+                                    error={errors[field.name]?.message}
+                                  />
+                                )}
+                              />
+                            ))}
+                          </div>
+
+                          <div className="flex flex-col gap-3 sm:flex-row">
+                            <button
+                              type="submit"
+                              disabled={actionLoading}
+                              className="flex-1 rounded-2xl bg-[#003d4d] px-5 py-3 font-semibold text-white transition hover:bg-[#0d5d6c] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {actionLoading ? "Updating address..." : "Update"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelAddressEdit}
+                              disabled={actionLoading}
+                              className="flex-1 rounded-2xl border border-[#d9ebe6] px-5 py-3 font-semibold text-[#31545b] transition hover:bg-[#f6fbf9] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className="mt-4 flex items-start gap-3">
+                          <MapPin className="mt-1 h-5 w-5 text-[#0d5d6c]" />
+                          <div className="text-sm text-[#31545b]">
+                            <p className="font-semibold text-[#003d4d]">
+                              {activeOrder.shippingAddress.fullName}
+                            </p>
+                            <p>{activeOrder.shippingAddress.phone}</p>
+                            <p className="mt-1">
+                              {activeOrder.shippingAddress.addressLine1}
+                              {activeOrder.shippingAddress.addressLine2
+                                ? `, ${activeOrder.shippingAddress.addressLine2}`
+                                : ""}
+                              , {activeOrder.shippingAddress.city},{" "}
+                              {activeOrder.shippingAddress.state} -{" "}
+                              {activeOrder.shippingAddress.postalCode}
+                            </p>
+                            <p>{activeOrder.shippingAddress.country}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
+                      <h3 className="text-lg font-semibold text-[#003d4d]">
+                        Notes
+                      </h3>
+                      <div className="mt-4 space-y-3 text-sm text-[#31545b]">
+                        <p>
+                          Customer note:{" "}
+                          <span className="font-medium text-[#003d4d]">
+                            {activeOrder.notes || "No note added"}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {canCancelOrder(activeOrder.orderStatus) && (
+                      <button
+                        onClick={() =>
+                          dispatch(cancelExistingOrder(activeOrder.id))
+                            .unwrap()
+                            .then((res) => {
+                              setSelectedOrder(res);
+                              showAlert({
+                                type: "success",
+                                message: `Order ${res.orderNumber} has been cancelled.`,
+                              });
+                            })
+                            .catch((message) => {
+                              showAlert({
+                                type: "error",
+                                message:
+                                  typeof message === "string"
+                                    ? message
+                                    : "Failed to cancel the order.",
+                              });
+                            })
+                        }
+                        disabled={actionLoading}
+                        className="w-full rounded-2xl bg-rose-600 px-5 py-3 font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {actionLoading ? "Cancelling order..." : "Cancel Order"}
+                      </button>
+                    )}
+
+                    <div className="rounded-2xl p-4 sm:p-5">
                       <h3 className="text-lg font-semibold text-[#003d4d]">
                         Order items
                       </h3>
                       <div className="mt-4 space-y-3">
                         {activeOrder.items.map((item, index) => (
-                          <div
-                            key={`${item.productId}-${index}`}
-                            className="flex flex-col gap-4 rounded-2xl border border-[#e4f0ed] p-4 sm:flex-row sm:items-center"
-                          >
-                            <Image
-                              src={normalizeImageSrc(item.image)}
-                              alt={item.name}
-                              width={80}
-                              height={80}
-                              className="h-20 w-20 rounded-2xl border border-[#e4f0ed] bg-[#f8fbfa] object-cover"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-[#003d4d]">
-                                {item.name}
-                              </p>
-                              <p className="mt-1 text-sm text-gray-500">
-                                {item.weight || "Pack details unavailable"}
-                              </p>
-                              <p className="mt-1 text-sm text-gray-500">
-                                Quantity: {item.quantity}
+                          <div key={`${item.productId}-${index}`} className="space-y-4">
+                            <div className="flex flex-col gap-4 rounded-2xl border border-[#e4f0ed] p-4 sm:flex-row sm:justify-between">
+                              <Image
+                                src={normalizeImageSrc(item.image)}
+                                alt={item.name}
+                                width={80}
+                                height={80}
+                                className="h-20 w-20 rounded-2xl border border-[#e4f0ed] bg-[#f8fbfa] object-cover"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-[#003d4d]">
+                                  {item.name}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {item.weight || "Pack details unavailable"}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  Quantity: {item.quantity}
+                                </p>
+                              </div>
+                              <p className="text-base font-semibold text-[#003d4d]">
+                                {formatCurrency(item.price)}
                               </p>
                             </div>
-                            <p className="text-base font-semibold text-[#003d4d]">
-                              {formatCurrency(item.price)}
-                            </p>
+                            <TrackOrderItemReview
+                              productId={item.productId}
+                              delivered={activeOrder.orderStatus === "delivered"}
+                            />
                           </div>
                         ))}
                       </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <h3 className="text-lg font-semibold text-[#003d4d]">
-                            Delivery address
-                          </h3>
-                          {canEditAddress && !isEditingAddress ? (
-                            <button
-                              type="button"
-                              onClick={handleStartAddressEdit}
-                              disabled={actionLoading}
-                              className="inline-flex items-center gap-2 rounded-full border border-[#d9ebe6] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#0d5d6c] transition hover:border-[#98c8bd] hover:bg-[#f6fbf9] disabled:cursor-not-allowed disabled:opacity-60"
-                              aria-label="Edit delivery address"
-                            >
-                              <Pencil className="h-4 w-4" />
-                              Edit
-                            </button>
-                          ) : null}
-                        </div>
-
-                        {isEditingAddress ? (
-                          <form
-                            onSubmit={handleSubmit(handleUpdateAddress)}
-                            className="mt-4 space-y-5"
-                          >
-                            <div className="grid gap-4 sm:grid-cols-2">
-                              {fieldConfig.map((field) => (
-                                <Controller
-                                  key={field.name}
-                                  name={field.name}
-                                  control={control}
-                                  render={({ field: controllerField }) => (
-                                    <AddressField
-                                      {...controllerField}
-                                      value={controllerField.value ?? ""}
-                                      label={field.label}
-                                      placeholder={field.placeholder}
-                                      icon={field.icon}
-                                      error={errors[field.name]?.message}
-                                    />
-                                  )}
-                                />
-                              ))}
-                            </div>
-
-                            <div className="flex flex-col gap-3 sm:flex-row">
-                              <button
-                                type="submit"
-                                disabled={actionLoading}
-                                className="flex-1 rounded-2xl bg-[#003d4d] px-5 py-3 font-semibold text-white transition hover:bg-[#0d5d6c] disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {actionLoading ? "Updating address..." : "Update"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleCancelAddressEdit}
-                                disabled={actionLoading}
-                                className="flex-1 rounded-2xl border border-[#d9ebe6] px-5 py-3 font-semibold text-[#31545b] transition hover:bg-[#f6fbf9] disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </form>
-                        ) : (
-                          <div className="mt-4 flex items-start gap-3">
-                            <MapPin className="mt-1 h-5 w-5 text-[#0d5d6c]" />
-                            <div className="text-sm text-[#31545b]">
-                              <p className="font-semibold text-[#003d4d]">
-                                {activeOrder.shippingAddress.fullName}
-                              </p>
-                              <p>{activeOrder.shippingAddress.phone}</p>
-                              <p className="mt-1">
-                                {activeOrder.shippingAddress.addressLine1}
-                                {activeOrder.shippingAddress.addressLine2
-                                  ? `, ${activeOrder.shippingAddress.addressLine2}`
-                                  : ""}
-                                , {activeOrder.shippingAddress.city},{" "}
-                                {activeOrder.shippingAddress.state} -{" "}
-                                {activeOrder.shippingAddress.postalCode}
-                              </p>
-                              <p>{activeOrder.shippingAddress.country}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
-                        <h3 className="text-lg font-semibold text-[#003d4d]">
-                          Notes
-                        </h3>
-                        <div className="mt-4 space-y-3 text-sm text-[#31545b]">
-                          <p>
-                            Customer note:{" "}
-                            <span className="font-medium text-[#003d4d]">
-                              {activeOrder.notes || "No note added"}
-                            </span>
-                          </p>
-                          <p>
-                            Admin note:{" "}
-                            <span className="font-medium text-[#003d4d]">
-                              {activeOrder.adminNote || "No update from admin yet"}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-
-                      {canCancelOrder(activeOrder.orderStatus) && (
-                        <button
-                          onClick={() =>
-                            dispatch(cancelExistingOrder(activeOrder.id))
-                              .unwrap()
-                              .then((res) => {
-                                setSelectedOrder(res);
-                                showAlert({
-                                  type: "success",
-                                  message: `Order ${res.orderNumber} has been cancelled.`,
-                                });
-                              })
-                              .catch((message) => {
-                                showAlert({
-                                  type: "error",
-                                  message:
-                                    typeof message === "string"
-                                      ? message
-                                      : "Failed to cancel the order.",
-                                });
-                              })
-                          }
-                          disabled={actionLoading}
-                          className="w-full rounded-2xl bg-rose-600 px-5 py-3 font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {actionLoading ? "Cancelling order..." : "Cancel Order"}
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>

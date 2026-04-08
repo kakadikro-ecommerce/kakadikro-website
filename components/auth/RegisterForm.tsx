@@ -22,7 +22,8 @@ function RegisterContent() {
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
-    mode: "onTouched",
+    mode: "onChange",
+    reValidateMode: "onChange",
   });
 
   const onSubmit = async (data: RegisterInput) => {

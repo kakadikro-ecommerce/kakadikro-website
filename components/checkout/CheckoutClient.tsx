@@ -460,9 +460,9 @@ export default function CheckoutClient() {
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl bg-emerald-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                      Order number
+                      Order ID
                     </p>
-                    <p className="mt-2 text-xl font-semibold text-slate-900">
+                    <p className="mt-2 text-sm md:text-base font-semibold text-slate-900">
                       {order.orderNumber || order.id}
                     </p>
                   </div>
@@ -470,7 +470,7 @@ export default function CheckoutClient() {
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                       Status
                     </p>
-                    <p className="mt-2 text-xl font-semibold capitalize text-slate-900">
+                    <p className="mt-2 text-sm md:text-base font-semibold capitalize text-slate-900">
                       {order.orderStatus}
                     </p>
                   </div>
