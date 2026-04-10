@@ -38,6 +38,7 @@ import {
   canCancelOrder,
   type ShippingAddress,
 } from "@/types/order";
+import type { AuthUser } from "@/types/user";
 
 const currency = (value: number) => `Rs. ${value.toFixed(2)}`;
 
@@ -137,7 +138,7 @@ function AddressField({
 
 const getDefaultValues = (
   shippingAddress?: Partial<ShippingAddress> | null,
-  user?: { name?: string }
+  user?: Pick<AuthUser, "name"> | null
 ): ShippingAddressInput => ({
   ...EMPTY_SHIPPING_ADDRESS,
   ...shippingAddress,
