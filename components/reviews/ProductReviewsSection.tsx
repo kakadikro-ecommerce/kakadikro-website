@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { showAlert } from "@/components/ui/alert";
 import CustomerReviews from "@/components/ui/CustomerReviews";
 import ReviewForm from "@/components/reviews/ReviewForm";
@@ -8,7 +9,13 @@ import ReviewList from "@/components/reviews/ReviewList";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import type { CreateReviewInput } from "@/lib/validations/review";
-import { editReview, fetchReviewsByProductId, removeReview, submitReview } from "@/redux/slice/reviewsSlice";
+import {
+  editReview,
+  fetchReviewsByProductId,
+  removeReview,
+  submitReview,
+} from "@/redux/slice/reviewsSlice";
+import { getReviewEligibility } from "@/redux/api/reviewsApi";
 
 import type { Review } from "@/redux/api/reviewsApi";
 
@@ -23,8 +30,11 @@ export default function ProductReviewsSection({
   showCreateForm = true,
   showStaticReviews = false,
 }: Props) {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
   const { currentUser } = useAppSelector((state) => state.user);
   const reviews = useAppSelector((state) => state.reviews.byProductId[productId] || []);
   const loading = useAppSelector((state) => state.reviews.loadingByProductId[productId] || false);
@@ -34,6 +44,41 @@ export default function ProductReviewsSection({
   useEffect(() => {
     void dispatch(fetchReviewsByProductId({ productId }));
   }, [dispatch, productId]);
+
+  useEffect(() => {
+    if (!showCreateForm || !currentUser) {
+      setCreateError(null);
+      return;
+    }
+
+    let active = true;
+    setEligibilityLoading(true);
+
+    void getReviewEligibility(productId)
+      .then((result) => {
+        if (!active) return;
+        setCreateError(
+          result.canReview
+            ? null
+            : result.alreadyReviewed
+              ? "You have already reviewed this product."
+              : "You can only review products from delivered orders. Please purchase and receive this product first."
+        );
+      })
+      .catch(() => {
+        if (!active) return;
+        setCreateError(null);
+      })
+      .finally(() => {
+        if (active) {
+          setEligibilityLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser, productId, showCreateForm]);
 
   const ownReview = useMemo(
     () =>
@@ -47,15 +92,27 @@ export default function ProductReviewsSection({
   );
 
   const handleCreate = async (values: CreateReviewInput) => {
+    if (!currentUser) {
+      router.push(`/login?redirect=${encodeURIComponent(`/products/${productId}`)}`);
+      return;
+    }
+
+    setCreateError(null);
+
     try {
       await dispatch(submitReview(values)).unwrap();
       showAlert({ type: "success", message: "Your review has been posted." });
       void dispatch(fetchReviewsByProductId({ productId }));
     } catch (message) {
-      showAlert({
-        type: "error",
-        message: typeof message === "string" ? message : "Unable to post review right now.",
-      });
+      const errorMessage =
+        typeof message === "string"
+          ? message
+          : "Unable to post review right now.";
+      setCreateError(
+        errorMessage.includes("delivered orders")
+          ? "You can only review products from delivered orders. Please buy and receive this product before posting a review."
+          : errorMessage
+      );
     }
   };
 
@@ -112,6 +169,8 @@ export default function ProductReviewsSection({
               initialValues={{ productId, rating: 5, comment: "" }}
               onSubmit={handleCreate}
               loading={mutationLoading}
+              submitDisabled={Boolean(currentUser && createError)}
+              statusMessage={eligibilityLoading ? "Checking whether you can review this product..." : createError ?? undefined}
             />
           ) : null}
 

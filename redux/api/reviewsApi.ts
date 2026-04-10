@@ -75,7 +75,7 @@ export const deleteProductReview = async (reviewId: string) => {
 };
 
 export const getReviewEligibility = async (productId: string) => {
-  const response = await axios.get<ReviewsResponse>(`/v1/user/products/reviews/${productId}/eligibility`);
+  const response = await axios.get<ReviewsResponse>(`/v1/user/products/reviews/can-review/${productId}`);
 
   return response.data.data as ReviewEligibility;
 };

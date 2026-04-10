@@ -47,55 +47,55 @@ const fieldConfig: Array<{
   placeholder: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  {
-    name: "fullName",
-    label: "Full name",
-    placeholder: "Enter recipient name",
-    icon: UserRound,
-  },
-  {
-    name: "phone",
-    label: "Phone number",
-    placeholder: "10-digit mobile number",
-    icon: Phone,
-  },
-  {
-    name: "addressLine1",
-    label: "Address line 1",
-    placeholder: "House no, street, area",
-    icon: House,
-  },
-  {
-    name: "addressLine2",
-    label: "Address line 2",
-    placeholder: "Apartment, landmark (optional)",
-    icon: MapPlus,
-  },
-  {
-    name: "city",
-    label: "City",
-    placeholder: "City",
-    icon: MapPinned,
-  },
-  {
-    name: "state",
-    label: "State",
-    placeholder: "State",
-    icon: Map,
-  },
-  {
-    name: "postalCode",
-    label: "Postal code",
-    placeholder: "6-digit PIN code",
-    icon: Mailbox,
-  },
-  {
-    name: "country",
-    label: "Country",
-    placeholder: "Country",
-    icon: MapPinned,
-  },
-];
+    {
+      name: "fullName",
+      label: "Full name",
+      placeholder: "Enter recipient name",
+      icon: UserRound,
+    },
+    {
+      name: "phone",
+      label: "Phone number",
+      placeholder: "10-digit mobile number",
+      icon: Phone,
+    },
+    {
+      name: "addressLine1",
+      label: "Address line 1",
+      placeholder: "House no, street, area",
+      icon: House,
+    },
+    {
+      name: "addressLine2",
+      label: "Address line 2",
+      placeholder: "Apartment, landmark (optional)",
+      icon: MapPlus,
+    },
+    {
+      name: "city",
+      label: "City",
+      placeholder: "City",
+      icon: MapPinned,
+    },
+    {
+      name: "state",
+      label: "State",
+      placeholder: "State",
+      icon: Map,
+    },
+    {
+      name: "postalCode",
+      label: "Postal code",
+      placeholder: "6-digit PIN code",
+      icon: Mailbox,
+    },
+    {
+      name: "country",
+      label: "Country",
+      placeholder: "Country",
+      icon: MapPinned,
+    },
+  ];
 
 function AddressField({
   label,
@@ -114,20 +114,19 @@ function AddressField({
         {label}
       </span>
       <div
-        className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-sm transition ${
-          error
-            ? "border-red-300 shadow-red-100"
-            : "border-orange-100 focus-within:border-orange-300 focus-within:shadow-orange-100"
-        }`}
+        className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-sm transition ${error
+          ? "border-red-300 shadow-red-100"
+          : "border-orange-100 focus-within:border-orange-300 focus-within:shadow-orange-100"
+          }`}
       >
         <Icon
-          className={`h-4 w-4 shrink-0 ${
-            error ? "text-red-400" : "text-orange-500"
-          }`}
+          className={`h-4 w-4 shrink-0 ${error ? "text-red-400" : "text-orange-500"
+            }`}
         />
         <input
           {...props}
           placeholder={placeholder}
+          readOnly={props.readOnly}
           className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
         />
       </div>
@@ -137,10 +136,12 @@ function AddressField({
 }
 
 const getDefaultValues = (
-  shippingAddress?: Partial<ShippingAddress> | null
+  shippingAddress?: Partial<ShippingAddress> | null,
+  user?: { name?: string }
 ): ShippingAddressInput => ({
   ...EMPTY_SHIPPING_ADDRESS,
   ...shippingAddress,
+  fullName: shippingAddress?.fullName || user?.name || "",
 });
 
 export default function CheckoutClient() {
@@ -176,8 +177,8 @@ export default function CheckoutClient() {
   }, [cart.items.length, currentUser, dispatch, router]);
 
   useEffect(() => {
-    reset(getDefaultValues(order?.shippingAddress));
-  }, [order?.shippingAddress, reset]);
+    reset(getDefaultValues(order?.shippingAddress, currentUser));
+  }, [order?.shippingAddress, currentUser, reset]);
 
   useEffect(() => {
     if (!canEditAddress && isEditingAddress) {
@@ -254,7 +255,7 @@ export default function CheckoutClient() {
             : "Unable to cancel this order right now.",
       });
     }
-  }; 
+  };
 
   const handleStartAddressEdit = () => {
     if (!order?.shippingAddress || !canEditAddress) {
@@ -516,24 +517,28 @@ export default function CheckoutClient() {
                       className="mt-4 space-y-5"
                     >
                       <div className="grid gap-4 sm:grid-cols-2">
-                        {fieldConfig.map((field) => (
-                          <Controller
-                            key={field.name}
-                            control={control}
-                            name={field.name}
-                            render={({ field: controllerField }) => (
-                              <AddressField
-                                {...controllerField}
-                                value={controllerField.value ?? ""}
-                                label={field.label}
-                                placeholder={field.placeholder}
-                                icon={field.icon}
-                                error={errors[field.name]?.message}
-                                className="w-full"
-                              />
-                            )}
+                        {fieldConfig.map((field) => {
+                          const isNameField = field.name === "fullName";
+                          return (
+                            <Controller
+                              key={field.name}
+                              control={control}
+                              name={field.name}
+                              render={({ field: controllerField }) => (
+                          <AddressField
+                            {...controllerField}
+                            value={controllerField.value ?? ""}
+                            label={field.label}
+                            placeholder={field.placeholder}
+                            icon={field.icon}
+                            error={errors[field.name]?.message}
+                            readOnly={isNameField}
+                            className={`w-full ${isNameField ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
                           />
-                        ))}
+                        )}
+                      />
+                          );
+                        })}
                       </div>
 
                       {orderState.error ? (
@@ -634,7 +639,8 @@ export default function CheckoutClient() {
                             placeholder={field.placeholder}
                             icon={field.icon}
                             error={errors[field.name]?.message}
-                            className="w-full"
+                            readOnly={field.name === "fullName"}
+                            className={`w-full ${field.name === "fullName" ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
                           />
                         )}
                       />

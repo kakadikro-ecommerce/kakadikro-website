@@ -22,8 +22,10 @@ type Props =
       cancelLabel?: never;
       onCancel?: never;
       loading?: boolean;
+      submitDisabled?: boolean;
       className?: string;
       commentRows?: number;
+      statusMessage?: string;
     }
   | {
       mode: "edit";
@@ -33,8 +35,10 @@ type Props =
       cancelLabel?: string;
       onCancel: () => void;
       loading?: boolean;
+      submitDisabled?: boolean;
       className?: string;
       commentRows?: number;
+      statusMessage?: string;
     };
 
 const ratingLabels = ["Poor", "Fair", "Good", "Very good", "Excellent"];
@@ -79,6 +83,12 @@ export default function ReviewForm(props: Props) {
           </p>
         </div>
       </div>
+
+      {props.statusMessage ? (
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {props.statusMessage}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
         {props.mode === "create" ? <input type="hidden" {...register("productId")} /> : null}
@@ -145,8 +155,8 @@ export default function ReviewForm(props: Props) {
         ) : null}
         <button
           type="submit"
-          disabled={isSubmitting || props.loading}
-          className="rounded-full bg-[#003d4d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0d5d6c] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSubmitting || props.loading || props.submitDisabled}
+          className="inline-flex w-full rounded-full bg-[#003d4d] items-center justify-center px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0d5d6c] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {props.submitLabel ?? (props.mode === "create" ? "Post review" : "Update review")}
         </button>

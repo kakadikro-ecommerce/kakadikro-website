@@ -118,9 +118,16 @@ function AddressField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5c7176]">
-        {label}
-      </span>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5c7176]">
+          {label}
+        </span>
+        {props.readOnly ? (
+          <span className="rounded-full bg-[#eef7f4] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#0d5d6c]">
+            Auto-filled
+          </span>
+        ) : null}
+      </div>
       <div
         className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 transition ${error
             ? "border-rose-300"
@@ -131,9 +138,15 @@ function AddressField({
         <input
           {...props}
           placeholder={placeholder}
-          className="w-full bg-transparent text-sm text-[#16343c] outline-none placeholder:text-slate-400"
+          readOnly={props.readOnly}
+          className={`w-full bg-transparent text-sm outline-none placeholder:text-slate-400 ${props.readOnly ? "cursor-not-allowed text-slate-500" : "text-[#16343c]"}`}
         />
       </div>
+      {props.readOnly ? (
+        <p className="mt-1 text-xs text-[#6f878d]">
+          This name is taken from your account and cannot be changed here.
+        </p>
+      ) : null}
       {error ? <p className="mt-1 text-xs font-medium text-rose-600">{error}</p> : null}
     </label>
   );
@@ -639,7 +652,46 @@ const TrackOrder = () => {
 
                   <div className="space-y-6">
                     <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
+                                          <div className="rounded-2xl p-4 sm:p-5">
+                      <h3 className="text-lg font-semibold text-[#003d4d]">
+                        Order items
+                      </h3>
+                      <div className="mt-4 space-y-3">
+                        {activeOrder.items.map((item, index) => (
+                          <div key={`${item.productId}-${index}`} className="space-y-4">
+                            <div className="flex flex-col gap-4 rounded-2xl border border-[#e4f0ed] p-4 sm:flex-row sm:justify-between">
+                              <Image
+                                src={normalizeImageSrc(item.image)}
+                                alt={item.name}
+                                width={80}
+                                height={80}
+                                className="h-20 w-20 rounded-2xl border border-[#e4f0ed] bg-[#f8fbfa] object-cover"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-[#003d4d]">
+                                  {item.name}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {item.weight || "Pack details unavailable"}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  Quantity: {item.quantity}
+                                </p>
+                              </div>
+                              <p className="text-base font-semibold text-[#003d4d]">
+                                {formatCurrency(item.price)}
+                              </p>
+                            </div>
+                            <TrackOrderItemReview
+                              productId={item.productId}
+                              delivered={activeOrder.orderStatus === "delivered"}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                       <div className="flex flex-wrap items-start justify-between gap-3">
+                        
                         <h3 className="text-lg font-semibold text-[#003d4d]">
                           Delivery address
                         </h3>
@@ -676,6 +728,8 @@ const TrackOrder = () => {
                                     placeholder={field.placeholder}
                                     icon={field.icon}
                                     error={errors[field.name]?.message}
+                                    readOnly={field.name === "fullName"}
+                                    className={`w-full ${field.name === "fullName" ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
                                   />
                                 )}
                               />
@@ -766,44 +820,7 @@ const TrackOrder = () => {
                       </button>
                     )}
 
-                    <div className="rounded-2xl p-4 sm:p-5">
-                      <h3 className="text-lg font-semibold text-[#003d4d]">
-                        Order items
-                      </h3>
-                      <div className="mt-4 space-y-3">
-                        {activeOrder.items.map((item, index) => (
-                          <div key={`${item.productId}-${index}`} className="space-y-4">
-                            <div className="flex flex-col gap-4 rounded-2xl border border-[#e4f0ed] p-4 sm:flex-row sm:justify-between">
-                              <Image
-                                src={normalizeImageSrc(item.image)}
-                                alt={item.name}
-                                width={80}
-                                height={80}
-                                className="h-20 w-20 rounded-2xl border border-[#e4f0ed] bg-[#f8fbfa] object-cover"
-                              />
-                              <div className="min-w-0 flex-1">
-                                <p className="font-semibold text-[#003d4d]">
-                                  {item.name}
-                                </p>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  {item.weight || "Pack details unavailable"}
-                                </p>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  Quantity: {item.quantity}
-                                </p>
-                              </div>
-                              <p className="text-base font-semibold text-[#003d4d]">
-                                {formatCurrency(item.price)}
-                              </p>
-                            </div>
-                            <TrackOrderItemReview
-                              productId={item.productId}
-                              delivered={activeOrder.orderStatus === "delivered"}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+
                   </div>
                 </div>
               )}
