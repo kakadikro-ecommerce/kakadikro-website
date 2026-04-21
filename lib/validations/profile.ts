@@ -12,8 +12,8 @@ export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z
     .string()
-    .min(6, "Password must be at least 6 characters")
-    .max(10, "Password cannot exceed 10 characters")
+    .min(10, "Password must be at least 10 characters")
+    .max(15, "Password cannot exceed 15 characters")
     .regex(/[A-Z]/, "Must contain at least one uppercase letter"),
 });
 
