@@ -103,7 +103,7 @@ const Header = () => {
             <Link href="/" className="flex shrink-0 items-center">
               <div className="flex h-16 items-center md:h-20">
                 <img
-                  src="/assets/kde-logo.webp"
+                  src="/assets/kde-logo.png"
                   alt="Kaka Dikro"
                   className="h-28 w-auto object-contain md:h-36 sm:h-32"
                 />

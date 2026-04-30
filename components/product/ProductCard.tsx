@@ -22,7 +22,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const currentUser = useAppSelector((state) => state.user.currentUser);
   const [selectedWeight, setSelectedWeight] = useState(product.variants?.[0]?.weight ?? "");
 
-  const primaryImage = normalizeImageSrc(product.images?.[0]?.url, "/kde-logo-1.png");
+  const primaryImage = normalizeImageSrc(product.images?.[0]?.url, "/kde-logo.png");
   const selectedVariant =
     product.variants.find((variant) => variant.weight === selectedWeight) || product.variants?.[0];
 
@@ -31,6 +31,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   const mrp = selectedVariant?.mrp;
   const hasDiscount = typeof mrp === "number" && typeof price === "number" && mrp > price;
   const discountAmount = hasDiscount ? mrp - price : 0;
+  const isOutOfStock = typeof selectedVariant?.stock === "number" && selectedVariant.stock <= 0;
+  const stockLabel = isOutOfStock
+    ? "Item is out of stock"
+    : typeof selectedVariant?.stock === "number"
+      ? `${selectedVariant.stock} packs available`
+      : "Fresh stock available";
 
   const savingsLabel = useMemo(() => {
     if (!hasDiscount || !mrp || !price) {
@@ -46,6 +52,10 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const handleAddToCart = () => {
     if (!selectedVariant) {
+      return;
+    }
+
+    if (isOutOfStock) {
       return;
     }
 
@@ -70,6 +80,10 @@ export default function ProductCard({ product }: ProductCardProps) {
         });
       })
       .catch((error: string) => {
+        if (error?.toLowerCase().includes("out of stock")) {
+          return;
+        }
+
         showAlert({
           type: "error",
           message: error || "Failed to add item to cart.",
@@ -138,8 +152,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-[11px] text-slate-500">
-            {selectedVariant?.stock ? `${selectedVariant.stock} packs available` : "Fresh stock available"}
+          <p className={`mt-1 text-[11px] ${isOutOfStock ? "font-semibold text-red-600" : "text-slate-500"}`}>
+            {stockLabel}
           </p>
         </div>
 
@@ -156,7 +170,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           <button
             type="button"
             onClick={handleAddToCart}
-            className="flex items-center justify-center gap-1.5 rounded-full bg-[#7A330F] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#5f2609] sm:text-xs"
+            disabled={isOutOfStock}
+            aria-disabled={isOutOfStock}
+            className="flex items-center justify-center gap-1.5 rounded-full bg-[#7A330F] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#5f2609] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 sm:text-xs"
           >
             <ShoppingCart size={16} />
             <span className="hidden sm:inline">Add</span>

@@ -373,7 +373,7 @@ export default function CheckoutClient() {
                     >
                       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-white">
                         <Image
-                          src={item.image || "/assets/kde-logo.webp"}
+                          src={item.image || "/assets/kde-logo.png"}
                           alt={item.name}
                           fill
                           sizes="80px"
@@ -526,18 +526,18 @@ export default function CheckoutClient() {
                               control={control}
                               name={field.name}
                               render={({ field: controllerField }) => (
-                          <AddressField
-                            {...controllerField}
-                            value={controllerField.value ?? ""}
-                            label={field.label}
-                            placeholder={field.placeholder}
-                            icon={field.icon}
-                            error={errors[field.name]?.message}
-                            readOnly={isNameField}
-                            className={`w-full ${isNameField ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
-                          />
-                        )}
-                      />
+                                <AddressField
+                                  {...controllerField}
+                                  value={controllerField.value ?? ""}
+                                  label={field.label}
+                                  placeholder={field.placeholder}
+                                  icon={field.icon}
+                                  error={errors[field.name]?.message}
+                                  readOnly={isNameField}
+                                  className={`w-full ${isNameField ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
+                                />
+                              )}
+                            />
                           );
                         })}
                       </div>

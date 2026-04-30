@@ -56,7 +56,7 @@ interface RawOrderResponse {
   data?: RawOrder;
 }
 
-const DEFAULT_IMAGE = "/assets/kde-logo.webp";
+const DEFAULT_IMAGE = "/assets/kde-logo.png";
 
 const normalizePaymentMethod = (value?: string): PaymentMethod => {
   return value === "cod" ? value : "cod";

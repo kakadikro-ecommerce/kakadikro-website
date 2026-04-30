@@ -19,7 +19,7 @@ const Footer = () => {
             <Link href="/" className="flex items-center shrink-0 cursor-pointer">
               <div className="h-16 md:h-20 flex items-center">
                 <img
-                  src="/assets/kde-logo.webp"
+                  src="/assets/kde-logo.png"
                   alt="Logo"
                   className="h-28 w-auto object-contain md:h-36 sm:h-32"
                 />

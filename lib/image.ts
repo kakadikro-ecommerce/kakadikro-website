@@ -1,6 +1,6 @@
 export const normalizeImageSrc = (
   src?: string | null,
-  fallback = "/assets/kde-logo.webp"
+  fallback = "/assets/kde-logo.png"
 ) => {
   if (!src) {
     return fallback;

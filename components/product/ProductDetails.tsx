@@ -25,11 +25,17 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
   const selectedVariant =
     product.variants.find((variant) => variant.weight === selectedWeight) || product.variants?.[0];
-  const primaryImage = normalizeImageSrc(product.images?.[0]?.url, "/kde-logo-1.png");
+  const primaryImage = normalizeImageSrc(product.images?.[0]?.url, "/kde-logo.png");
   const price = selectedVariant?.price;
   const mrp = selectedVariant?.mrp;
   const hasDiscount = typeof mrp === "number" && typeof price === "number" && mrp > price;
   const productId = product.id || product._id || product.slug;
+  const isOutOfStock = typeof selectedVariant?.stock === "number" && selectedVariant.stock <= 0;
+  const stockLabel = isOutOfStock
+    ? "Item is out of stock"
+    : typeof selectedVariant?.stock === "number"
+      ? `${selectedVariant.stock} packs currently in stock`
+      : "Available while fresh stock lasts";
 
   const highlightCards = useMemo(
     () => [
@@ -60,6 +66,10 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
       return;
     }
 
+    if (isOutOfStock) {
+      return;
+    }
+
     if (!currentUser) {
       router.push(`/login?redirect=${encodeURIComponent(pathname || `/product/${product.slug}`)}`);
       return;
@@ -81,6 +91,10 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         });
       })
       .catch((error: string) => {
+        if (error?.toLowerCase().includes("out of stock")) {
+          return;
+        }
+
         showAlert({
           type: "error",
           message: error || "Failed to add item to cart.",
@@ -188,16 +202,16 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  className="rounded-full bg-[#7A330F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5f2609]"
+                  disabled={isOutOfStock}
+                  aria-disabled={isOutOfStock}
+                  className="rounded-full bg-[#7A330F] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5f2609] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                 >
                   Add to Cart
                 </button>
               </div>
 
-              <p className="mt-2 text-xs text-slate-500 sm:text-sm">
-                {selectedVariant?.stock
-                  ? `${selectedVariant.stock} packs currently in stock`
-                  : "Available while fresh stock lasts"}
+              <p className={`mt-2 text-xs sm:text-sm ${isOutOfStock ? "font-semibold text-red-600" : "text-slate-500"}`}>
+                {stockLabel}
               </p>
             </div>
           </div>

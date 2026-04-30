@@ -1,4 +1,5 @@
 import axios from "@/lib/axios";
+import { isAxiosError } from "axios";
 import type { CartItem, CartSummary, ProductVariant } from "@/types/product";
 
 interface RawCartItem {
@@ -39,6 +40,11 @@ interface CartResponse {
   totalItems?: number;
 }
 
+interface ApiErrorPayload {
+  message?: string;
+  error?: string;
+}
+
 const buildVariant = (item: RawCartItem): ProductVariant => ({
   weight: item.weight || "",
   price: item.unitPrice ?? item.price ?? 0,
@@ -55,7 +61,7 @@ const mapCartItem = (item: RawCartItem): CartItem => {
     productId: item.productId || product?._id || product?.id || (typeof item.product === "string" ? item.product : ""),
     slug: item.slug || product?.slug || "",
     name: item.name || "Cart item",
-    image: item.productImage || item.image || product?.images?.[0]?.url || "/kde-logo-1.png",
+    image: item.productImage || item.image || product?.images?.[0]?.url || "/kde-logo.png",
     category: item.category || product?.category,
     variant: buildVariant(item),
     quantity: item.quantity ?? 1,
@@ -87,6 +93,19 @@ const parseCartResponse = (payload: CartResponse | RawCartSummary): CartSummary 
   };
 };
 
+const getApiErrorMessage = (error: unknown): string | null => {
+  if (!isAxiosError<ApiErrorPayload>(error)) {
+    return null;
+  }
+
+  const data = error.response?.data;
+  return data?.message || data?.error || null;
+};
+
+const getApiErrorStatus = (error: unknown): number | undefined => {
+  return isAxiosError(error) ? error.response?.status : undefined;
+};
+
 export const getMyCart = async (): Promise<CartSummary> => {
   const response = await axios.get<CartResponse>("/v1/user/cart");
   return parseCartResponse(response.data);
@@ -97,8 +116,16 @@ export const addItemToCart = async (payload: {
   weight: string;
   quantity: number;
 }): Promise<CartSummary> => {
-  const response = await axios.post<CartResponse>("/v1/user/cart/items", payload);
-  return parseCartResponse(response.data);
+  try {
+    const response = await axios.post<CartResponse>("/v1/user/cart/items", payload);
+    return parseCartResponse(response.data);
+  } catch (error) {
+    const message =
+      getApiErrorMessage(error) ||
+      (getApiErrorStatus(error) === 400 ? "Item is out of stock." : "Failed to add item to cart.");
+
+    throw new Error(message);
+  }
 };
 
 export const updateCartItemQuantity = async (

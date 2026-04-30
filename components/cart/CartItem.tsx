@@ -30,7 +30,7 @@ export default function CartItem({
           className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-orange-50"
         >
           <Image
-            src={normalizeImageSrc(item.image, "/assets/kde-logo.webp")}
+            src={normalizeImageSrc(item.image, "/assets/kde-logo.png")}
             alt={item.name}
             fill
             sizes="80px"
