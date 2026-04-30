@@ -66,7 +66,7 @@ export default function CustomerReviews({
         </div>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="overflow-hidden rounded-[2rem] border border-orange-100 bg-white/95 p-5 shadow-[0_22px_60px_rgba(0,61,77,0.08)] sm:p-6">
+          <div className="overflow-hidden rounded-[2rem] border border-orange-100 bg-white/95 p-5 shadow-[0_22px_60px_rgba(0,61,77,0.08)] sm:p-6 lg:flex lg:flex-col lg:justify-center">
             {loading ? (
               <div className="min-h-[260px] animate-pulse rounded-[1.5rem] bg-slate-100" />
             ) : showCarousel && list.length ? (
@@ -124,7 +124,7 @@ export default function CustomerReviews({
               <ReviewList reviews={list} emptyText={emptyText} />
             )}
 
-            <div className="mt-6 flex items-center justify-center gap-4">
+            <div className="mt-6 flex items-center justify-center gap-4 lg:mt-4">
               <button
                 type="button"
                 onClick={() => list.length && setCurrent((prev) => (prev - 1 + list.length) % list.length)}
