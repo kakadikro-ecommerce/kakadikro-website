@@ -7,9 +7,8 @@ export const injectStore = (store: any) => {
   storeRef = store;
 };
 
-// Same-origin `/api` so the browser never calls api.kakadikro.com directly.
-// next.config.ts rewrites `/api/*` to the backend (avoids CORS 404s on production).
-const apiBaseUrl = "/api";
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_BASE_URL || "https://api.kakadikro.com/api";
 
 const axiosInstance = axios.create({
   baseURL: apiBaseUrl,
