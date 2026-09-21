@@ -1,9 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { normalizeImageSrc } from "@/lib/image";
+import CatalogImage from "@/components/ui/CatalogImage";
+import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { getVariantKey } from "@/lib/variantLabel";
+import { fetchCart } from "@/redux/slice/cartSlice";
 
 import type { CartItem as CartItemType } from "@/types/product";
 
@@ -22,6 +24,8 @@ export default function CartItem({
   onDecrease,
   onRemove,
 }: CartItemProps) {
+  const dispatch = useAppDispatch();
+
   return (
     <article className="rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
       <div className="flex gap-4">
@@ -29,12 +33,16 @@ export default function CartItem({
           href={item.slug ? `/products/${item.slug}` : "/products"}
           className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-orange-50"
         >
-          <Image
-            src={normalizeImageSrc(item.image, "/assets/kde-logo.png")}
+          <CatalogImage
+            src={item.image}
+            fallback="/assets/kde-logo.png"
             alt={item.name}
             fill
             sizes="80px"
             className="object-cover"
+            onExpired={() => {
+              void dispatch(fetchCart());
+            }}
           />
         </Link>
 
@@ -48,7 +56,8 @@ export default function CartItem({
                 {item.name}
               </Link>
               <p className="mt-1 text-xs text-slate-500">
-                {item.category || "Premium spice"}{item.variant.weight ? ` • ${item.variant.weight}` : ""}
+                {item.category || "Premium spice"}
+                {getVariantKey(item.variant) ? ` • ${getVariantKey(item.variant)}` : ""}
               </p>
             </div>
 

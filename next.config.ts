@@ -5,13 +5,18 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "kakadikroproduct.s3.ap-south-1.amazonaws.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "**",
       },
       {
         protocol: "http",
         hostname: "**",
       },
-    ], 
+    ],
   },
    async redirects() {
     return [

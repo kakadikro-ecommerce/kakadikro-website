@@ -4,6 +4,9 @@ import ProductPageClient from "./ProductPageClient";
 import { buildMetadata } from "@/app/seo";
 import { getProductBySlug } from "@/redux/api/productApi";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function formatSlug(slug: string) {
   return slug
     .split("-")
@@ -28,7 +31,9 @@ export async function generateMetadata({
       description:
         product.shortDescription ||
         product.description ||
-        `Explore ${product.name} from Kaka Dikro's authentic masala collection.`,
+        (String(product.productType || "").toUpperCase() === "ELECTRONICS"
+          ? `Explore ${product.name} from Kaka Dikro's electronics collection.`
+          : `Explore ${product.name} from Kaka Dikro's authentic masala collection.`),
       path: `/products/${slug}`,
       keywords: [product.name, product.category, product.brand, ...(product.tags || [])].filter(
         Boolean

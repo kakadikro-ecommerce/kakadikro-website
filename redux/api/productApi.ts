@@ -47,10 +47,19 @@ const parseProductResponse = (payload: Product | ProductResponse): Product => {
 export const getAllProducts = async (params?: {
   search?: string;
   category?: string;
+  productType?: "GROCERY" | "ELECTRONICS";
   page?: number;
   limit?: number;
 }) => {
-  const response = await axios.get("/v1/user/products", { params });
+  const queryParams: Record<string, string | number> = {};
+
+  if (params?.search) queryParams.search = params.search;
+  if (params?.category) queryParams.category = params.category;
+  if (params?.productType) queryParams.productType = params.productType;
+  if (params?.page) queryParams.page = params.page;
+  if (params?.limit) queryParams.limit = params.limit;
+
+  const response = await axios.get("/user/products", { params: queryParams });
 
   return {
     items: parseProductsResponse(response.data),
@@ -60,10 +69,18 @@ export const getAllProducts = async (params?: {
 
 export const getProductBySlug = async (slug: string): Promise<Product> => {
   try {
-    const response = await axios.get<Product | ProductResponse>(`/v1/user/products/${slug}`);
+    const response = await axios.get<Product | ProductResponse>(`/user/products/${slug}`);
     return parseProductResponse(response.data);
   } catch {
-    const fallbackResponse = await axios.get<Product | ProductResponse>(`/v1/user/products/${slug}`);
+    const fallbackResponse = await axios.get<Product | ProductResponse>(`/user/products/${slug}`);
     return parseProductResponse(fallbackResponse.data);
   }
+};
+
+export const getRelatedProducts = async (slug: string, limit = 4): Promise<Product[]> => {
+  const response = await axios.get(`/user/products/${slug}/related`, {
+    params: { limit },
+  });
+
+  return parseProductsResponse(response.data);
 };

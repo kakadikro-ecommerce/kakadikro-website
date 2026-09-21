@@ -1,16 +1,28 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { buildMetadata } from "@/app/seo";
 import ProductsPageClient from "./ProductsPageClient";
+import Loader from "@/components/ui/Loader";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Shop Our Masala Collection",
+  title: "Shop Our Products",
   description:
-    "Browse the complete Kaka Dikro spice collection, including whole spices, blended masalas, and daily cooking essentials.",
+    "Browse Kaka Dikro grocery spices and electronics including pumps, torches, and daily essentials.",
   path: "/products",
-  keywords: ["buy masala online", "Gujarati spices", "whole spices", "blended masala"],
+  keywords: ["buy masala online", "Gujarati spices", "electronics", "water pump"],
 });
 
 export default function ProductsPage() {
-  return <ProductsPageClient />;
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-7xl px-4 py-16">
+          <Loader label="Loading products" size="lg" />
+        </div>
+      }
+    >
+      <ProductsPageClient />
+    </Suspense>
+  );
 }

@@ -46,6 +46,7 @@ interface ApiErrorPayload {
 }
 
 const buildVariant = (item: RawCartItem): ProductVariant => ({
+  name: item.weight || "",
   weight: item.weight || "",
   price: item.unitPrice ?? item.price ?? 0,
   mrp: item.mrp,
@@ -107,7 +108,7 @@ const getApiErrorStatus = (error: unknown): number | undefined => {
 };
 
 export const getMyCart = async (): Promise<CartSummary> => {
-  const response = await axios.get<CartResponse>("/v1/user/cart");
+  const response = await axios.get<CartResponse>("/user/cart");
   return parseCartResponse(response.data);
 };
 
@@ -117,7 +118,7 @@ export const addItemToCart = async (payload: {
   quantity: number;
 }): Promise<CartSummary> => {
   try {
-    const response = await axios.post<CartResponse>("/v1/user/cart/items", payload);
+    const response = await axios.post<CartResponse>("/user/cart/items", payload);
     return parseCartResponse(response.data);
   } catch (error) {
     const message =
@@ -132,16 +133,16 @@ export const updateCartItemQuantity = async (
   itemId: string,
   payload: { quantity: number }
 ): Promise<CartSummary> => {
-  const response = await axios.put<CartResponse>(`/v1/user/cart/items/${itemId}`, payload);
+  const response = await axios.put<CartResponse>(`/user/cart/items/${itemId}`, payload);
   return parseCartResponse(response.data);
 };
 
 export const removeCartItem = async (itemId: string): Promise<CartSummary> => {
-  const response = await axios.delete<CartResponse>(`/v1/user/cart/items/${itemId}`);
+  const response = await axios.delete<CartResponse>(`/user/cart/items/${itemId}`);
   return parseCartResponse(response.data);
 };
 
 export const clearCart = async (): Promise<CartSummary> => {
-  const response = await axios.delete<CartResponse>("/v1/user/cart");
+  const response = await axios.delete<CartResponse>("/user/cart");
   return parseCartResponse(response.data);
 };

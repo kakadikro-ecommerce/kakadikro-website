@@ -47,7 +47,7 @@ export interface UpdateReviewInput {
 }
 
 export const getReviewsByProductId = async (productId: string, params?: { page?: number; limit?: number }) => {
-  const response = await axios.get<ReviewsResponse>(`/v1/user/products/reviews/${productId}`, { params });
+  const response = await axios.get<ReviewsResponse>(`/user/products/reviews/${productId}`, { params });
 
   return {
     reviews: (response.data.data as Review[]) ?? [],
@@ -57,25 +57,25 @@ export const getReviewsByProductId = async (productId: string, params?: { page?:
 };
 
 export const createProductReview = async (payload: CreateReviewInput) => {
-  const response = await axios.post<ReviewsResponse>("/v1/user/products/reviews", payload);
+  const response = await axios.post<ReviewsResponse>("/user/products/reviews", payload);
 
   return response.data.data as Review;
 };
 
 export const updateProductReview = async (reviewId: string, payload: UpdateReviewInput) => {
-  const response = await axios.put<ReviewsResponse>(`/v1/user/products/reviews/${reviewId}`, payload);
+  const response = await axios.put<ReviewsResponse>(`/user/products/reviews/${reviewId}`, payload);
 
   return response.data.data as Review;
 };
 
 export const deleteProductReview = async (reviewId: string) => {
-  const response = await axios.delete<ReviewsResponse>(`/v1/user/products/reviews/${reviewId}`);
+  const response = await axios.delete<ReviewsResponse>(`/user/products/reviews/${reviewId}`);
 
   return response.data.message;
 };
 
 export const getReviewEligibility = async (productId: string) => {
-  const response = await axios.get<ReviewsResponse>(`/v1/user/products/reviews/can-review/${productId}`);
+  const response = await axios.get<ReviewsResponse>(`/user/products/reviews/can-review/${productId}`);
 
   return response.data.data as ReviewEligibility;
 };

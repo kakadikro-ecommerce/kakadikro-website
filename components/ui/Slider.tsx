@@ -1,14 +1,14 @@
 const Slider = () => {
-  const items = [
-    "Purely Organic",
-    "Crafted with Care",
-    "Wholesome & Healthy",
-    "Farm Fresh",
-    "Certified Organic",
-    "Carefully Crafted",
-    "Healthy Choice",
-    "Direct from Farm",
-  ];
+const items = [
+  "Where Quality Meets Innovation",    // bridges both worlds
+  "Pure & Powerful",                   // organic + tools
+  "Trusted for Every Need",            // universal appeal
+  "Crafted with Care & Precision",     // food care + tool precision
+  "Bringing the Best of Both Worlds",  // clearly communicates diversity
+  "Quality You Can Feel",              // emotional + tangible
+  "Innovating for a Better Life",      // forward-thinking
+  "From Farm to Workshop",             // creative brand story
+];
 
   const duplicatedItems = [...items, ...items];
 

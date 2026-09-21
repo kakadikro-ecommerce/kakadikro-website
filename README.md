@@ -139,16 +139,16 @@ The app uses `lib/axios.ts` to create a shared Axios client with:
 
 Current user-facing API helpers live in `redux/api/` and call endpoints such as:
 
-- `/v1/user/products`
-- `/v1/user/products/:slug`
-- `/v1/user/cart`
-- `/v1/user/orders`
-- `/v1/user/orders/tracking/:id`
-- `/v1/user/auth/login`
-- `/v1/user/auth/register`
-- `/v1/user/profile`
-- `/v1/user/contacts`
-- `/v1/user/products/reviews`
+- `/user/products`
+- `/user/products/:slug`
+- `/user/cart`
+- `/user/orders`
+- `/user/orders/tracking/:id`
+- `/user/auth/login`
+- `/user/auth/register`
+- `/user/profile`
+- `/user/contacts`
+- `/user/products/reviews`
 
 `vercel.json` also defines a rewrite from `/api/:path*` to the configured remote backend host.
 

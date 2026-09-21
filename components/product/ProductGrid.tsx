@@ -3,12 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import ProductCard from "@/components/product/ProductCard";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import {
+  getAllProductsCatalog,
+  getProductTypeCatalog,
+} from "@/lib/productTypeCatalog";
+import { PRODUCT_TYPE_OPTIONS } from "@/lib/variantLabel";
 import { fetchProducts } from "@/redux/slice/productSlice";
-import type { Product } from "@/types/product";
+import { getAllProducts } from "@/redux/api/productApi";
+import type { Product, ProductType } from "@/types/product";
 import Loader from "@/components/ui/Loader";
 
 interface ProductGridProps {
@@ -17,8 +24,11 @@ interface ProductGridProps {
   badge?: string;
   limit?: number;
   showViewAllButton?: boolean;
+  viewAllHref?: string;
   products?: Product[];
   showControls?: boolean;
+  fixedProductType?: ProductType;
+  initialProductType?: "" | ProductType;
 }
 
 function ProductSkeletonCard() {
@@ -35,24 +45,71 @@ function ProductSkeletonCard() {
   );
 }
 
+const normalizeProductType = (value?: string | null): "" | ProductType => {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "GROCERY" || normalized === "ELECTRONICS") {
+    return normalized;
+  }
+  return "";
+};
+
 export default function ProductGrid({
-  title = "Everyday spices, packed for real kitchens",
-  description = "Explore a curated selection of products.",
+  title,
+  description,
   badge = "Products",
   limit = 3,
   showViewAllButton = false,
+  viewAllHref,
   products: customProducts,
   showControls = false,
+  fixedProductType,
+  initialProductType,
 }: ProductGridProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const { items, loading, error, pagination } = useAppSelector(
     (state) => state.products
   );
 
+  const urlType = showControls
+    ? normalizeProductType(searchParams.get("type"))
+    : "";
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [productType, setProductType] = useState<"" | ProductType>(
+    fixedProductType || initialProductType || urlType || "",
+  );
   const [page, setPage] = useState(1);
+  const [localProducts, setLocalProducts] = useState<Product[]>([]);
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const useLocalFetch = Boolean(fixedProductType && !customProducts);
+
+  const activeType = fixedProductType || productType;
+  const typeCatalog = activeType
+    ? getProductTypeCatalog(activeType)
+    : getAllProductsCatalog();
+  const resolvedTitle = title || typeCatalog.listingTitle;
+  const resolvedDescription = description || typeCatalog.listingDescription;
+  const resolvedViewAllHref =
+    viewAllHref ||
+    (activeType ? `/products?type=${activeType}` : "/products");
+
+  useEffect(() => {
+    if (fixedProductType) {
+      setProductType(fixedProductType);
+      return;
+    }
+
+    if (showControls) {
+      setProductType(urlType);
+      setPage(1);
+    }
+  }, [fixedProductType, showControls, urlType]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -64,17 +121,63 @@ export default function ProductGrid({
   useEffect(() => {
     if (customProducts) return;
 
+    if (useLocalFetch) {
+      let cancelled = false;
+
+      const loadProducts = async () => {
+        try {
+          setLocalLoading(true);
+          setLocalError(null);
+          const response = await getAllProducts({
+            productType: fixedProductType,
+            limit,
+          });
+          if (!cancelled) {
+            setLocalProducts(response.items);
+          }
+        } catch {
+          if (!cancelled) {
+            setLocalError("Failed to load products.");
+            setLocalProducts([]);
+          }
+        } finally {
+          if (!cancelled) {
+            setLocalLoading(false);
+          }
+        }
+      };
+
+      void loadProducts();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
     dispatch(
       fetchProducts({
-        search: debouncedSearch,
-        category,
+        search: debouncedSearch || undefined,
+        category: category || undefined,
+        productType: activeType || undefined,
         page,
         limit,
       })
     );
-  }, [debouncedSearch, category, page, limit, dispatch, customProducts]);
+  }, [
+    debouncedSearch,
+    category,
+    activeType,
+    page,
+    limit,
+    dispatch,
+    customProducts,
+    useLocalFetch,
+    fixedProductType,
+  ]);
 
-  const products = customProducts ?? items;
+  const products = customProducts ?? (useLocalFetch ? localProducts : items);
+  const gridLoading = useLocalFetch ? localLoading : loading;
+  const gridError = useLocalFetch ? localError : error;
   const visibleProducts = customProducts ? products.slice(0, limit) : products;
 
   const categories = useMemo(() => {
@@ -91,7 +194,29 @@ export default function ProductGrid({
   }, [items]);
 
   const showSidebar = showControls && !customProducts;
+  const showTypeFilters = showControls && !customProducts && !fixedProductType;
   const showPagination = showControls && !customProducts && Boolean(pagination);
+  const isEmpty = !gridLoading && !gridError && visibleProducts.length === 0;
+
+  const updateProductType = (nextType: "" | ProductType) => {
+    setProductType(nextType);
+    setCategory("");
+    setPage(1);
+
+    if (!showControls || fixedProductType) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextType) {
+      params.set("type", nextType);
+    } else {
+      params.delete("type");
+    }
+
+    const query = params.toString();
+    router.replace(query ? `/products?${query}` : "/products", { scroll: false });
+  };
 
   const renderProductGrid = (gridProducts: Product[]) => (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -104,6 +229,15 @@ export default function ProductGrid({
     </div>
   );
 
+  if (
+    !gridLoading &&
+    !gridError &&
+    (customProducts || useLocalFetch) &&
+    visibleProducts.length === 0
+  ) {
+    return null;
+  }
+
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-8">
@@ -112,22 +246,46 @@ export default function ProductGrid({
             {badge}
           </span>
         ) : null}
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">          
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
-          {title}
-        </h2>
+            {resolvedTitle}
+          </h2>
 
           {showViewAllButton && (
             <Link
-              href="/products"
+              href={resolvedViewAllHref}
               className="whitespace-nowrap text-center rounded-full bg-[#7A330F] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#5f2609]"
             >
               View All Products
             </Link>
           )}
         </div>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">{description}</p>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">
+          {resolvedDescription}
+        </p>
       </div>
+
+      {showTypeFilters ? (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {PRODUCT_TYPE_OPTIONS.map((option) => {
+            const isActive = productType === option.value;
+            return (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => updateProductType(option.value)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  isActive
+                    ? "bg-[#7A330F] text-white shadow-sm"
+                    : "border border-orange-100 bg-white text-slate-700 hover:border-orange-300 hover:text-orange-700"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className={`flex flex-col gap-8 ${showSidebar ? "lg:flex-row" : ""}`}>
         {showSidebar ? (
@@ -180,7 +338,7 @@ export default function ProductGrid({
         ) : null}
 
         <div className="flex-1">
-          {loading ? (
+          {gridLoading ? (
             showControls ? (
               <Loader
                 label="Loading products"
@@ -194,8 +352,15 @@ export default function ProductGrid({
                 ))}
               </div>
             )
-          ) : error ? (
-            <div className="text-red-500">{error}</div>
+          ) : gridError ? (
+            <div className="text-red-500">{gridError}</div>
+          ) : isEmpty ? (
+            <div className="rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-6 py-16 text-center">
+              <p className="text-base font-semibold text-slate-800">No products found</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Try another product type, category, or search term.
+              </p>
+            </div>
           ) : (
             <>
               {renderProductGrid(visibleProducts)}

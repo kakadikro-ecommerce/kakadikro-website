@@ -153,19 +153,19 @@ const parseOrdersResponse = (payload: RawOrdersResponse): OrdersResponse => {
 export const createOrder = async (
   payload: CreateOrderPayload
 ): Promise<Order> => {
-  const response = await axios.post<RawOrderResponse>("/v1/user/orders", payload);
+  const response = await axios.post<RawOrderResponse>("/user/orders", payload);
   return parseOrderResponse(response.data);
 };
 
 export const getMyOrders = async (): Promise<OrdersResponse> => {
-  const response = await axios.get<RawOrdersResponse>("/v1/user/orders");
+  const response = await axios.get<RawOrdersResponse>("/user/orders");
   return parseOrdersResponse(response.data);
 };
 
 export const updateOrder = async (id: string, payload: { shippingAddress?: ShippingAddress; notes?: string }
 ): Promise<Order> => {
   const response = await axios.put<RawOrderResponse>(
-    `/v1/user/orders/${id}`,
+    `/user/orders/${id}`,
     payload
   );
 
@@ -177,11 +177,11 @@ export const trackOrder = async (id: string): Promise<Order> => {
     throw new Error("Order id is required.");
   }
 
-  const response = await axios.get<RawOrderResponse>(`/v1/user/orders/tracking/${id}`);
+  const response = await axios.get<RawOrderResponse>(`/user/orders/tracking/${id}`);
   return parseOrderResponse(response.data);
 };
 
 export const cancelOrder = async (id: string): Promise<Order> => {
-  const response = await axios.put<RawOrderResponse>(`/v1/user/orders/cancel/${id}`);
+  const response = await axios.put<RawOrderResponse>(`/user/orders/cancel/${id}`);
   return parseOrderResponse(response.data);
 };

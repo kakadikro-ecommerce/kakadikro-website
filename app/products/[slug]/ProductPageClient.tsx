@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ProductDetails from "@/components/product/ProductDetails";
 import ProductGrid from "@/components/product/ProductGrid";
@@ -10,11 +10,13 @@ import Loader from "@/components/ui/Loader";
 import Slider from "@/components/ui/Slider";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { getProductTypeCatalog } from "@/lib/productTypeCatalog";
+import { getRelatedProducts } from "@/redux/api/productApi";
 import {
   clearSelectedProduct,
   fetchProductBySlug,
-  fetchProducts,
 } from "@/redux/slice/productSlice";
+import type { Product } from "@/types/product";
 import FAQSection from "@/components/ui/FaqSection";
 import { trackOrderFAQs } from "@/utils/constants";
 
@@ -24,15 +26,10 @@ export default function ProductPageClient() {
   const productRef = useRef<HTMLDivElement | null>(null);
   const slug = params?.slug;
   const dispatch = useAppDispatch();
-  const { items, loading, selectedProduct, selectedLoading, selectedError } = useAppSelector(
+  const { selectedProduct, selectedLoading, selectedError } = useAppSelector(
     (state) => state.products
   );
-
-  useEffect(() => {
-    if (!items.length) {
-      void dispatch(fetchProducts({}));
-    }
-  }, [dispatch, items.length]);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     if (!slug) {
@@ -47,6 +44,33 @@ export default function ProductPageClient() {
   }, [dispatch, slug]);
 
   useEffect(() => {
+    if (!slug) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadRelated = async () => {
+      try {
+        const products = await getRelatedProducts(slug, 4);
+        if (!cancelled) {
+          setRelatedProducts(products);
+        }
+      } catch {
+        if (!cancelled) {
+          setRelatedProducts([]);
+        }
+      }
+    };
+
+    void loadRelated();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  useEffect(() => {
     if (selectedProduct && productRef.current) {
       setTimeout(() => {
         productRef.current?.scrollIntoView({
@@ -57,13 +81,7 @@ export default function ProductPageClient() {
     }
   }, [selectedProduct]);
 
-  const relatedProducts = items.filter(
-    (product) =>
-      product.slug !== selectedProduct?.slug &&
-      (!!selectedProduct?.category ? product.category === selectedProduct.category : true)
-  );
-
-  if (selectedLoading || (loading && !selectedProduct)) {
+  if (selectedLoading) {
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <Loader
@@ -85,10 +103,14 @@ export default function ProductPageClient() {
     );
   }
 
+  const typeCatalog = getProductTypeCatalog(selectedProduct.productType);
+  const isElectronics =
+    String(selectedProduct.productType || "").toUpperCase() === "ELECTRONICS";
+
   return (
     <main>
       <HeroSection
-        title="Our Products"
+        title={isElectronics ? "Electronics" : "Our Products"}
         image="/assets/productHero.webp"
         ctaText="Contact Us"
         onCtaClick={() => router.push("/contactUs")}
@@ -97,23 +119,28 @@ export default function ProductPageClient() {
       <div ref={productRef}>
         <ProductDetails product={selectedProduct} />
       </div>
-      <ProductGrid
-        badge="Related Products"
-        title="More flavours from the same collection"
-        description="Explore related products below and add the right pack size directly from the listing."
-        limit={4}
-        showViewAllButton
-        products={relatedProducts}
+      {relatedProducts.length > 0 ? (
+        <ProductGrid
+          badge="Related Products"
+          title={typeCatalog.relatedTitle}
+          description={typeCatalog.relatedDescription}
+          limit={4}
+          showViewAllButton
+          viewAllHref={
+            selectedProduct.productType
+              ? `/products?type=${selectedProduct.productType}`
+              : "/products"
+          }
+          products={relatedProducts}
         />
-          {selectedProduct.id || selectedProduct._id ? (
-            <ProductReviewsSection
-              productId={selectedProduct.id || selectedProduct._id || ""}
-              showStaticReviews={false}
-            />
-          ) : null}
-      <FAQSection
-        faqs={trackOrderFAQs}
-      />
+      ) : null}
+      {selectedProduct.id || selectedProduct._id ? (
+        <ProductReviewsSection
+          productId={selectedProduct.id || selectedProduct._id || ""}
+          showStaticReviews={false}
+        />
+      ) : null}
+      <FAQSection faqs={trackOrderFAQs} />
     </main>
   );
 }

@@ -15,23 +15,15 @@ export default function ProductsPageClient() {
     <>
       <HeroSection
         title="Our Products"
-        image="/assets/productHero.webp"
+        image="/assets/productsHero.jpg"
         ctaText="Contact Us"
         onCtaClick={() => router.push("/contactUs")}
       />
       <Slider />
 
       <main>
-        <ProductGrid
-          badge="Our Products"
-          title="Explore the complete Masala collection"
-          description="Browse every spice category with dedicated sections for whole spices, blended spices, and powder spices."
-          limit={12}
-          showControls
-        />
-        <FAQSection
-          faqs={trackOrderFAQs}
-        />
+        <ProductGrid limit={12} showControls />
+        <FAQSection faqs={trackOrderFAQs} />
       </main>
     </>
   );

@@ -28,7 +28,13 @@ const initialState: ProductState = {
 
 export const fetchProducts = createAsyncThunk<
   { items: Product[]; pagination: any },
-  { search?: string; category?: string; page?: number; limit?: number },
+  {
+    search?: string;
+    category?: string;
+    productType?: "GROCERY" | "ELECTRONICS";
+    page?: number;
+    limit?: number;
+  },
   { rejectValue: string }
 >("products/fetchProducts", async (params, { rejectWithValue }) => {
   try {
@@ -63,6 +69,24 @@ const productSlice = createSlice({
       state.selectedError = null;
       state.selectedLoading = false;
     },
+    upsertProduct: (state, action: PayloadAction<Product>) => {
+      const next = action.payload;
+      const key = next.id || next._id || next.slug;
+
+      state.items = state.items.map((item) =>
+        (item.id || item._id || item.slug) === key ? next : item
+      );
+
+      const selected = state.selectedProduct;
+      if (
+        selected &&
+        (selected.slug === next.slug ||
+          selected.id === next.id ||
+          selected._id === next._id)
+      ) {
+        state.selectedProduct = next;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -94,6 +118,6 @@ const productSlice = createSlice({
   },
 });
 
-export const { clearSelectedProduct } = productSlice.actions;
+export const { clearSelectedProduct, upsertProduct } = productSlice.actions;
 
 export default productSlice.reducer;

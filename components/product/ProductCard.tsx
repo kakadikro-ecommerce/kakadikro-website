@@ -1,14 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, ShoppingCart } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { showAlert } from "@/components/ui/alert";
+import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
-import { normalizeImageSrc } from "@/lib/image";
+import {
+  formatStockLabel,
+  getProductTypeCatalog,
+} from "@/lib/productTypeCatalog";
+import {
+  findVariantByKey,
+  formatProductTypeLabel,
+  getVariantKey,
+} from "@/lib/variantLabel";
+import { getProductBySlug } from "@/redux/api/productApi";
 import { addCartItem, openCart } from "@/redux/slice/cartSlice";
+import { upsertProduct } from "@/redux/slice/productSlice";
 import type { Product } from "@/types/product";
 
 interface ProductCardProps {
@@ -20,11 +30,19 @@ export default function ProductCard({ product }: ProductCardProps) {
   const pathname = usePathname();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector((state) => state.user.currentUser);
-  const [selectedWeight, setSelectedWeight] = useState(product.variants?.[0]?.weight ?? "");
+  const catalog = getProductTypeCatalog(product.productType);
+  const [selectedKey, setSelectedKey] = useState(
+    getVariantKey(product.variants?.[0]) || "",
+  );
+  const [imageSrc, setImageSrc] = useState(product.images?.[0]?.url);
 
-  const primaryImage = normalizeImageSrc(product.images?.[0]?.url, "/kde-logo.png");
+  useEffect(() => {
+    setImageSrc(product.images?.[0]?.url);
+  }, [product.images, product.slug]);
+
   const selectedVariant =
-    product.variants.find((variant) => variant.weight === selectedWeight) || product.variants?.[0];
+    findVariantByKey(product.variants, selectedKey) || product.variants?.[0];
+  const selectedVariantKey = getVariantKey(selectedVariant);
 
   const productId = product.id || product._id || product.slug;
   const price = selectedVariant?.price;
@@ -32,11 +50,11 @@ export default function ProductCard({ product }: ProductCardProps) {
   const hasDiscount = typeof mrp === "number" && typeof price === "number" && mrp > price;
   const discountAmount = hasDiscount ? mrp - price : 0;
   const isOutOfStock = typeof selectedVariant?.stock === "number" && selectedVariant.stock <= 0;
-  const stockLabel = isOutOfStock
-    ? "Item is out of stock"
-    : typeof selectedVariant?.stock === "number"
-      ? `${selectedVariant.stock} packs available`
-      : "Fresh stock available";
+  const stockLabel = formatStockLabel(
+    product.productType,
+    selectedVariant?.stock,
+    isOutOfStock,
+  );
 
   const savingsLabel = useMemo(() => {
     if (!hasDiscount || !mrp || !price) {
@@ -46,12 +64,25 @@ export default function ProductCard({ product }: ProductCardProps) {
     return `${Math.round(((mrp - price) / mrp) * 100)}% OFF`;
   }, [hasDiscount, mrp, price]);
 
+  const handleExpiredImage = () => {
+    if (!product.slug) {
+      return;
+    }
+
+    void getProductBySlug(product.slug)
+      .then((fresh) => {
+        dispatch(upsertProduct(fresh));
+        setImageSrc(fresh.images?.[0]?.url);
+      })
+      .catch(() => undefined);
+  };
+
   const handleOpenProduct = () => {
-    router.push(`/product/${product.slug}`);
+    router.push(`/products/${product.slug}`);
   };
 
   const handleAddToCart = () => {
-    if (!selectedVariant) {
+    if (!selectedVariant || !selectedVariantKey) {
       return;
     }
 
@@ -60,14 +91,14 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
 
     if (!currentUser) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname || `/product/${product.slug}`)}`);
+      router.push(`/login?redirect=${encodeURIComponent(pathname || `/products/${product.slug}`)}`);
       return;
     }
 
     void dispatch(
       addCartItem({
         productId,
-        weight: selectedVariant.weight,
+        weight: selectedVariantKey,
         quantity: 1,
       })
     )
@@ -76,7 +107,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         dispatch(openCart());
         showAlert({
           type: "success",
-          message: `${product.name} (${selectedVariant.weight}) added to cart.`,
+          message: `${product.name} (${selectedVariantKey}) added to cart.`,
         });
       })
       .catch((error: string) => {
@@ -98,18 +129,27 @@ export default function ProductCard({ product }: ProductCardProps) {
         onClick={handleOpenProduct}
         className="relative block aspect-[4/3] w-full overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.35),_transparent_45%),linear-gradient(135deg,_#fff7ed,_#ffffff_45%,_#fef3c7)] text-left"
       >
-        <Image
-          src={primaryImage}
+        <CatalogImage
+          src={imageSrc}
+          fallback="/kde-logo.png"
           alt={product.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
           className="object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
+          onExpired={handleExpiredImage}
         />
         <div className="absolute inset-0 bg-black/40 transition-opacity duration-300 group-hover:bg-black/10" />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-4 py-3 text-left">
-          <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-white/80">
-            {product.category || "Premium spices"}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-white/80">
+              {product.category || catalog.categoryFallback}
+            </p>
+            {product.productType ? (
+              <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                {formatProductTypeLabel(product.productType)}
+              </span>
+            ) : null}
+          </div>
           <h3 className="mt-1 line-clamp-1 text-base font-semibold text-white sm:text-lg">
             {product.name}
           </h3>
@@ -120,15 +160,18 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="grid gap-2">
           <label className="space-y-2">
             <select
-              value={selectedWeight}
-              onChange={(event) => setSelectedWeight(event.target.value)}
+              value={selectedKey}
+              onChange={(event) => setSelectedKey(event.target.value)}
               className="w-full rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-medium text-slate-800 outline-none transition focus:border-orange-400 focus:bg-white sm:text-sm"
             >
-              {product.variants.map((variant) => (
-                <option key={variant.weight} value={variant.weight}>
-                  {variant.weight}
-                </option>
-              ))}
+              {product.variants.map((variant, index) => {
+                const key = getVariantKey(variant) || `variant-${index}`;
+                return (
+                  <option key={key} value={getVariantKey(variant)}>
+                    {getVariantKey(variant) || "Variant"}
+                  </option>
+                );
+              })}
             </select>
           </label>
 

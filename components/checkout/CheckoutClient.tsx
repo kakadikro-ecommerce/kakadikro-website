@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type InputHTMLAttributes } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,9 +22,11 @@ import {
 } from "lucide-react";
 
 import { showAlert } from "@/components/ui/alert";
+import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
+import { getVariantKey } from "@/lib/variantLabel";
 import { fetchCart, hydrateCartState } from "@/redux/slice/cartSlice";
 import {
   cancelExistingOrder,
@@ -172,10 +173,8 @@ export default function CheckoutClient() {
       return;
     }
 
-    if (!cart.items.length) {
-      void dispatch(fetchCart());
-    }
-  }, [cart.items.length, currentUser, dispatch, router]);
+    void dispatch(fetchCart());
+  }, [currentUser, dispatch, router]);
 
   useEffect(() => {
     reset(getDefaultValues(order?.shippingAddress, currentUser));
@@ -372,12 +371,16 @@ export default function CheckoutClient() {
                       className="flex gap-4 rounded-[24px] border border-slate-100 bg-slate-50/80 p-4"
                     >
                       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-white">
-                        <Image
-                          src={item.image || "/assets/kde-logo.png"}
+                        <CatalogImage
+                          src={item.image}
+                          fallback="/assets/kde-logo.png"
                           alt={item.name}
                           fill
                           sizes="80px"
                           className="object-cover"
+                          onExpired={() => {
+                            void dispatch(fetchCart());
+                          }}
                         />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -388,7 +391,9 @@ export default function CheckoutClient() {
                             </p>
                             <p className="mt-1 text-sm text-slate-500">
                               {item.category || "Premium spice"}
-                              {item.variant.weight ? ` - ${item.variant.weight}` : ""}
+                              {getVariantKey(item.variant)
+                                ? ` - ${getVariantKey(item.variant)}`
+                                : ""}
                             </p>
                           </div>
                           <p className="text-sm font-semibold text-slate-900">

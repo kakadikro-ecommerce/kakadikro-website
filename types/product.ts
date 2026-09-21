@@ -3,11 +3,17 @@ export interface ProductImage {
   altText?: string;
 }
 
+export type ProductType = "GROCERY" | "ELECTRONICS";
+
 export interface ProductVariant {
-  weight: string;
+  /** Preferred display / cart key */
+  name?: string;
+  /** Legacy grocery field — still used by older products and cart payloads */
+  weight?: string;
   price: number;
   mrp?: number;
   stock?: number;
+  attributes?: Record<string, string>;
 }
 
 export interface Product {
@@ -17,10 +23,12 @@ export interface Product {
   slug: string;
   description: string;
   shortDescription?: string;
+  productType?: ProductType;
   category?: string;
   brand?: string;
   images: ProductImage[];
   variants: ProductVariant[];
+  specifications?: Record<string, string>;
   ingredients?: string[];
   features?: string[];
   benefits?: string[];

@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
-
+import { Menu, Search, ShoppingCart, User, X, ChevronDown } from "lucide-react";
 import CartDrawer from "@/components/cart/CartDrawer";
+import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { clearStoredAuth } from "@/lib/auth";
-import { normalizeImageSrc } from "@/lib/image";
 import { showAlert } from "@/components/ui/alert";
 import { toggleCart } from "@/redux/slice/cartSlice";
 import { logoutUser } from "@/redux/slice/userSlice";
@@ -19,10 +18,16 @@ import { logoutApi } from "@/redux/api/userApi";
 import Loader from "@/components/ui/Loader";
 
 const navItems = [
-  { href: "/products", label: "Our Products" },
+  { href: "/", label: "Home" },
   { href: "/about", label: "About Us" },
   { href: "/contactUs", label: "Contact Us" },
   { href: "/trackOrder", label: "Track Your Order" },
+];
+
+const productLinks = [
+  { href: "/products", label: "All Products" },
+  { href: "/products?type=GROCERY", label: "Grocery" },
+  { href: "/products?type=ELECTRONICS", label: "Electronics" },
 ];
 
 const Header = () => {
@@ -35,6 +40,8 @@ const Header = () => {
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [productsMenuOpen, setProductsMenuOpen] = useState(false);
+  const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
   const cartCount = useAppSelector((state) => state.cart.totalItems);
   const currentUser = useAppSelector((state) => state.user.currentUser);
   const dispatch = useAppDispatch();
@@ -71,6 +78,16 @@ const Header = () => {
 
     fetchProducts();
   }, [debouncedSearch]);
+
+  const refreshSearchResults = () => {
+    if (!debouncedSearch) {
+      return;
+    }
+
+    void getAllProducts({ search: debouncedSearch, limit: 5 })
+      .then((res) => setResults(res.items))
+      .catch(() => undefined);
+  };
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -111,7 +128,46 @@ const Header = () => {
             </Link>
 
             <nav className="hidden flex-1 items-center justify-center gap-8 whitespace-nowrap font-[family-name:var(--font-serif-stack)] text-[14px] font-bold text-[#003d4d] lg:flex xl:gap-12 xl:text-[15px]">
-              {navItems.map((item) => (
+              <Link
+                href="/"
+                className="group relative px-1 py-3 transition-colors hover:text-green-800"
+              >
+                Home
+                <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
+              </Link>
+
+              <div
+                className="relative"
+                onMouseEnter={() => setProductsMenuOpen(true)}
+                onMouseLeave={() => setProductsMenuOpen(false)}
+              >
+                <Link
+                  href="/products"
+                  className="group relative inline-flex items-center gap-1 px-1 py-3 transition-colors hover:text-green-800"
+                >
+                  Our Products
+                  <ChevronDown size={14} className="mt-0.5" />
+                  <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
+                </Link>
+
+                {productsMenuOpen ? (
+                  <div className="absolute left-0 top-full z-50 min-w-[180px] pt-2">
+                    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white py-2 shadow-lg">
+                      {productLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="block px-4 py-2.5 text-sm font-semibold text-[#003d4d] transition hover:bg-green-50 hover:text-green-800"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {navItems.slice(1).map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -187,10 +243,13 @@ const Header = () => {
                           className={`flex items-center gap-3 p-3 cursor-pointer ${index === activeIndex ? "bg-gray-200" : "hover:bg-gray-100"
                             }`}
                         >
-                          <img
-                            src={normalizeImageSrc(product.images?.[0]?.url)}
+                          <CatalogImage
+                            src={product.images?.[0]?.url}
                             alt={product.name}
-                            className="w-10 h-10 object-cover rounded"
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded object-cover"
+                            onExpired={refreshSearchResults}
                           />
                           <span>{product.name}</span>
                         </Link>
@@ -298,10 +357,13 @@ const Header = () => {
                           href={`/products/${product.slug}`}
                           className="flex items-center gap-3 p-3 hover:bg-gray-100"
                         >
-                          <img
-                            src={normalizeImageSrc(product.images?.[0]?.url)}
+                          <CatalogImage
+                            src={product.images?.[0]?.url}
                             alt={product.name}
-                            className="w-10 h-10 object-cover rounded"
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded object-cover"
+                            onExpired={refreshSearchResults}
                           />
                           <span>{product.name}</span>
                         </Link>
@@ -337,7 +399,43 @@ const Header = () => {
               </div>
 
               <div className="flex flex-1 flex-col gap-3">
-                {navItems.map((item) => (
+                <Link
+                  href="/"
+                  className="border-b border-orange-100 px-1 py-3 text-base font-medium text-[#003d4d] transition hover:text-green-700"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Home
+                </Link>
+
+                <div className="border-b border-orange-100">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-1 py-3 text-base font-medium text-[#003d4d] transition hover:text-green-700"
+                    onClick={() => setMobileProductsOpen((prev) => !prev)}
+                  >
+                    Our Products
+                    <ChevronDown
+                      size={18}
+                      className={`transition-transform ${mobileProductsOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {mobileProductsOpen ? (
+                    <div className="pb-3 pl-3">
+                      {productLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="block py-2 text-sm font-medium text-[#003d4d] transition hover:text-green-700"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                {navItems.slice(1).map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}

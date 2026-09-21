@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -25,10 +24,10 @@ import {
 } from "lucide-react";
 
 import { showAlert } from "@/components/ui/alert";
+import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import TrackOrderItemReview from "@/components/reviews/TrackOrderItemReview";
-import { normalizeImageSrc } from "@/lib/image";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
 import {
   cancelExistingOrder,
@@ -379,7 +378,7 @@ const TrackOrder = () => {
 
         {(showMyOrders || activeOrder) && (
           <div
-            className={`mt-10 grid gap-6 ${showMyOrders ? "lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start" : ""
+            className={`mt-10 grid gap-6 ${showMyOrders ? "lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start" : ""
               }`}
           >
             {showMyOrders ? (
@@ -432,7 +431,7 @@ const TrackOrder = () => {
                           key={ord.id}
                           type="button"
                           onClick={() => handleSelectOrder(ord.id)}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${isActive
+                          className={`w-fit rounded-2xl border p-4 text-left transition ${isActive
                             ? "border-[#0d5d6c] bg-[#f2fbf8] shadow-sm"
                             : "border-[#d9ebe6] bg-white hover:border-[#98c8bd] hover:bg-[#fbfefd]"
                             }`}
@@ -441,7 +440,7 @@ const TrackOrder = () => {
                             <div>
                               <p className="text-sm text-gray-500">Order ID</p>
                               <p className="font-semibold text-[#003d4d]">
-                                {ord.orderNumber}
+                                {ord.id}
                               </p>
                             </div>
                             <span
@@ -660,12 +659,26 @@ const TrackOrder = () => {
                         {activeOrder.items.map((item, index) => (
                           <div key={`${item.productId}-${index}`} className="space-y-4">
                             <div className="flex flex-col gap-4 rounded-2xl border border-[#e4f0ed] p-4 sm:flex-row sm:justify-between">
-                              <Image
-                                src={normalizeImageSrc(item.image)}
+                              <CatalogImage
+                                src={item.image}
                                 alt={item.name}
                                 width={80}
                                 height={80}
                                 className="h-20 w-20 rounded-2xl border border-[#e4f0ed] bg-[#f8fbfa] object-cover"
+                                onExpired={() => {
+                                  const orderId =
+                                    activeOrder.orderNumber || activeOrder.id;
+                                  if (!orderId) {
+                                    return;
+                                  }
+
+                                  void dispatch(fetchOrderById(orderId))
+                                    .unwrap()
+                                    .then((res) => {
+                                      setSelectedOrder(res);
+                                    })
+                                    .catch(() => undefined);
+                                }}
                               />
                               <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-[#003d4d]">
