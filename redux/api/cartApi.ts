@@ -1,5 +1,5 @@
 import axios from "@/lib/axios";
-import { isAxiosError } from "axios";
+import { getApiErrorMessage, parseApiError } from "@/lib/apiError";
 import type { CartItem, CartSummary, ProductVariant } from "@/types/product";
 
 interface RawCartItem {
@@ -29,6 +29,7 @@ interface RawCartItem {
 interface RawCartSummary {
   items?: RawCartItem[];
   subtotal?: number;
+  subtotalAmount?: number;
   totalItems?: number;
 }
 
@@ -37,12 +38,8 @@ interface CartResponse {
   cart?: RawCartSummary;
   items?: RawCartItem[];
   subtotal?: number;
+  subtotalAmount?: number;
   totalItems?: number;
-}
-
-interface ApiErrorPayload {
-  message?: string;
-  error?: string;
 }
 
 const buildVariant = (item: RawCartItem): ProductVariant => ({
@@ -57,10 +54,20 @@ const mapCartItem = (item: RawCartItem): CartItem => {
   const product =
     item.product && typeof item.product === "object" ? item.product : undefined;
 
+  const productId = String(
+    item.productId ||
+      product?._id ||
+      product?.id ||
+      (typeof item.product === "string" ? item.product : "") ||
+      ""
+  ).trim();
+
   return {
     cartItemId: item._id || item.id || "",
-    productId: item.productId || product?._id || product?.id || (typeof item.product === "string" ? item.product : ""),
+    productId,
     slug: item.slug || product?.slug || "",
+    // Prefer cart-line snapshot fields so renamed catalog products cannot
+    // rewrite what the shopper already added.
     name: item.name || "Cart item",
     image: item.productImage || item.image || product?.images?.[0]?.url || "/kde-logo.png",
     category: item.category || product?.category,
@@ -81,7 +88,9 @@ const parseCartResponse = (payload: CartResponse | RawCartSummary): CartSummary 
   const subtotal =
     typeof source?.subtotal === "number"
       ? source.subtotal
-      : items.reduce((sum, item) => sum + item.variant.price * item.quantity, 0);
+      : typeof source?.subtotalAmount === "number"
+        ? source.subtotalAmount
+        : items.reduce((sum, item) => sum + item.variant.price * item.quantity, 0);
   const totalItems =
     typeof source?.totalItems === "number"
       ? source.totalItems
@@ -94,17 +103,8 @@ const parseCartResponse = (payload: CartResponse | RawCartSummary): CartSummary 
   };
 };
 
-const getApiErrorMessage = (error: unknown): string | null => {
-  if (!isAxiosError<ApiErrorPayload>(error)) {
-    return null;
-  }
-
-  const data = error.response?.data;
-  return data?.message || data?.error || null;
-};
-
 const getApiErrorStatus = (error: unknown): number | undefined => {
-  return isAxiosError(error) ? error.response?.status : undefined;
+  return parseApiError(error).status;
 };
 
 export const getMyCart = async (): Promise<CartSummary> => {
@@ -121,11 +121,11 @@ export const addItemToCart = async (payload: {
     const response = await axios.post<CartResponse>("/user/cart/items", payload);
     return parseCartResponse(response.data);
   } catch (error) {
-    const message =
-      getApiErrorMessage(error) ||
-      (getApiErrorStatus(error) === 400 ? "Item is out of stock." : "Failed to add item to cart.");
-
-    throw new Error(message);
+    const fallback =
+      getApiErrorStatus(error) === 400
+        ? "Item is out of stock."
+        : "Failed to add item to cart.";
+    throw new Error(getApiErrorMessage(error, fallback));
   }
 };
 

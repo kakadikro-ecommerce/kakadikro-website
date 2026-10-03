@@ -29,25 +29,42 @@ const parseProductsResponse = (payload: Product[] | ProductsResponse): Product[]
 };
 
 const parseProductResponse = (payload: Product | ProductResponse): Product => {
+  let product: Product | undefined;
+
   if (payload && !Array.isArray(payload) && "name" in payload) {
-    return payload as Product;
+    product = payload as Product;
+  } else if (payload && !Array.isArray(payload) && "data" in payload && payload.data) {
+    product = payload.data;
+  } else if (payload && !Array.isArray(payload) && "product" in payload && payload.product) {
+    product = payload.product;
   }
 
-  if (payload && !Array.isArray(payload) && "data" in payload && payload.data) {
-    return payload.data;
+  if (!product) {
+    throw new Error("Product not found.");
   }
 
-  if (payload && !Array.isArray(payload) && "product" in payload && payload.product) {
-    return payload.product;
-  }
-
-  throw new Error("Product not found.");
+  const id = String(product.id || (product as Product & { _id?: string })._id || "").trim();
+  return {
+    ...product,
+    id: id || product.id,
+    _id: (product as Product & { _id?: string })._id || id || product._id,
+  };
 };
+
+const normalizeProductList = (items: Product[]): Product[] =>
+  items.map((item) => {
+    const id = String(item.id || (item as Product & { _id?: string })._id || "").trim();
+    return {
+      ...item,
+      id: id || item.id,
+      _id: (item as Product & { _id?: string })._id || id || item._id,
+    };
+  });
 
 export const getAllProducts = async (params?: {
   search?: string;
   category?: string;
-  productType?: "GROCERY" | "ELECTRONICS";
+  productType?: "CROSSLIFE" | "CROSSLINE";
   page?: number;
   limit?: number;
 }) => {
@@ -62,7 +79,7 @@ export const getAllProducts = async (params?: {
   const response = await axios.get("/user/products", { params: queryParams });
 
   return {
-    items: parseProductsResponse(response.data),
+    items: normalizeProductList(parseProductsResponse(response.data)),
     pagination: response.data.pagination,
   };
 };
@@ -82,5 +99,5 @@ export const getRelatedProducts = async (slug: string, limit = 4): Promise<Produ
     params: { limit },
   });
 
-  return parseProductsResponse(response.data);
+  return normalizeProductList(parseProductsResponse(response.data));
 };

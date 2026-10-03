@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type InputHTMLAttributes } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -25,23 +25,40 @@ import { showAlert } from "@/components/ui/alert";
 import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { getApiErrorMessage } from "@/lib/apiError";
+import {
+  formatPaymentMethodLabel,
+  isOnlinePaymentMethod,
+  needsOnlineCheckout,
+} from "@/lib/paymentLabels";
+import { openRazorpayCheckout } from "@/lib/razorpay";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
 import { getVariantKey } from "@/lib/variantLabel";
+import { createPaymentOrder, verifyPayment } from "@/redux/api/paymentApi";
+import { getOrderDisplayId } from "@/redux/api/orderApi";
 import { fetchCart, hydrateCartState } from "@/redux/slice/cartSlice";
 import {
   cancelExistingOrder,
   clearOrderError,
   createNewOrder,
+  fetchMyOrders,
+  fetchOrderById,
+  hydrateCurrentOrder,
+  resetCurrentOrder,
   updateExistingOrder,
 } from "@/redux/slice/orderSlice";
 import {
   EMPTY_SHIPPING_ADDRESS,
   canCancelOrder,
+  type Order,
+  type PaymentMethod,
   type ShippingAddress,
 } from "@/types/order";
 import type { AuthUser } from "@/types/user";
 
 const currency = (value: number) => `Rs. ${value.toFixed(2)}`;
+
+type CheckoutPaymentChoice = Extract<PaymentMethod, "cod" | "card">;
 
 const fieldConfig: Array<{
   name: keyof ShippingAddressInput;
@@ -148,13 +165,23 @@ const getDefaultValues = (
 
 export default function CheckoutClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const retryOrderId = (searchParams.get("orderId") || "").trim();
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [paymentMethod, setPaymentMethod] =
+    useState<CheckoutPaymentChoice>("card");
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector((state) => state.user.currentUser);
   const cart = useAppSelector((state) => state.cart);
   const orderState = useAppSelector((state) => state.order);
   const order = orderState.currentOrder;
   const canEditAddress = !!order && canCancelOrder(order.orderStatus);
+  const orderDisplayId = getOrderDisplayId(order);
+  // Pay-now only when intentionally viewing an unpaid order (retry / post-place),
+  // never when the live cart still has items for a new checkout.
+  const showPayNow =
+    needsOnlineCheckout(order) && (Boolean(retryOrderId) || cart.totalItems === 0);
 
   const {
     control,
@@ -173,8 +200,83 @@ export default function CheckoutClient() {
       return;
     }
 
-    void dispatch(fetchCart());
-  }, [currentUser, dispatch, router]);
+    let cancelled = false;
+
+    const bootstrapCheckout = async () => {
+      try {
+        const cartSummary = await dispatch(fetchCart()).unwrap();
+
+        if (cancelled) return;
+
+        if (retryOrderId) {
+          try {
+            const targetOrder = await dispatch(
+              fetchOrderById(retryOrderId)
+            ).unwrap();
+
+            if (cancelled) return;
+
+            if (!needsOnlineCheckout(targetOrder)) {
+              dispatch(resetCurrentOrder());
+              showAlert({
+                type: "info",
+                message:
+                  "This order does not need online payment. Opening your cart checkout instead.",
+              });
+              router.replace("/checkout");
+              return;
+            }
+
+            dispatch(hydrateCurrentOrder(targetOrder));
+            return;
+          } catch (error: unknown) {
+            if (cancelled) return;
+            showAlert({
+              type: "error",
+              message: getApiErrorMessage(
+                error,
+                "Unable to load that order for checkout."
+              ),
+            });
+            dispatch(resetCurrentOrder());
+            router.replace("/checkout");
+            return;
+          }
+        }
+
+        // Fresh cart checkout — never hydrate a previous unpaid order over live cart items.
+        if (cartSummary.totalItems > 0) {
+          dispatch(resetCurrentOrder());
+        }
+
+        // A pending online payment does not block a new purchase.
+        // Only restore the pay screen when the cart is empty.
+        if (cartSummary.totalItems === 0) {
+          try {
+            const result = await dispatch(fetchMyOrders()).unwrap();
+            if (cancelled) return;
+
+            const unpaidOrder =
+              result.orders.find((entry) => needsOnlineCheckout(entry)) || null;
+
+            if (unpaidOrder) {
+              dispatch(hydrateCurrentOrder(unpaidOrder));
+            }
+          } catch {
+            // Order lookup is optional here; checkout stays usable.
+          }
+        }
+      } catch {
+        // Cart fetch errors surface via cart slice; keep checkout usable.
+      }
+    };
+
+    void bootstrapCheckout();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, dispatch, retryOrderId, router]);
 
   useEffect(() => {
     reset(getDefaultValues(order?.shippingAddress, currentUser));
@@ -192,6 +294,76 @@ export default function CheckoutClient() {
     };
   }, [dispatch]);
 
+  const clearLocalCart = () => {
+    dispatch(
+      hydrateCartState({
+        items: [],
+        subtotal: 0,
+        totalItems: 0,
+      })
+    );
+  };
+
+  const runOnlinePayment = async (targetOrder: Order) => {
+    if (!targetOrder.id) {
+      throw new Error("Order id is missing. Please refresh and try again.");
+    }
+
+    const expectedAmount = Number(targetOrder.totalAmount);
+    const paymentSession = await createPaymentOrder({
+      orderId: targetOrder.id,
+    });
+
+    const razorpayAmount = Number(paymentSession.razorpay.amount);
+    if (
+      !Number.isFinite(razorpayAmount) ||
+      razorpayAmount <= 0 ||
+      Math.round(expectedAmount * 100) !== razorpayAmount
+    ) {
+      throw new Error(
+        "Payment amount did not match this order. Please refresh and try again."
+      );
+    }
+
+    const checkoutResponse = await openRazorpayCheckout({
+      key: paymentSession.razorpay.key,
+      amount: razorpayAmount,
+      currency: paymentSession.razorpay.currency,
+      name: "Kaka Dikro",
+      description: `Payment for order ${getOrderDisplayId(targetOrder)}`,
+      order_id: paymentSession.razorpay.orderId,
+      prefill: {
+        name:
+          targetOrder.shippingAddress.fullName || currentUser?.name || undefined,
+        email: currentUser?.email || undefined,
+        contact: targetOrder.shippingAddress.phone || undefined,
+      },
+      notes: {
+        orderId: targetOrder.id,
+      },
+      theme: {
+        color: "#7A330F",
+      },
+    });
+
+    const verified = await verifyPayment({
+      razorpayOrderId: checkoutResponse.razorpay_order_id,
+      razorpayPaymentId: checkoutResponse.razorpay_payment_id,
+      razorpaySignature: checkoutResponse.razorpay_signature,
+    });
+
+    dispatch(hydrateCurrentOrder(verified.order));
+    clearLocalCart();
+    void dispatch(fetchCart());
+
+    showAlert({
+      type: "success",
+      message: `Payment successful for order ${getOrderDisplayId(verified.order)}.`,
+    });
+
+    router.replace("/checkout");
+  };
+
   const handlePlaceOrder = async (values: ShippingAddressInput) => {
     if (!cart.items.length) {
       showAlert({
@@ -205,30 +377,76 @@ export default function CheckoutClient() {
       const createdOrder = await dispatch(
         createNewOrder({
           shippingAddress: values,
-          paymentMethod: "cod",
+          paymentMethod,
         })
       ).unwrap();
 
-      dispatch(
-        hydrateCartState({
-          items: [],
-          subtotal: 0,
-          totalItems: 0,
-        })
-      );
+      // Order already snapshots cart items — clear local cart for both COD and online.
+      clearLocalCart();
+      void dispatch(fetchCart());
 
-      showAlert({
-        type: "success",
-        message: `Order ${createdOrder.orderNumber} placed successfully.`,
-      });
-    } catch (message) {
+      const displayId = getOrderDisplayId(createdOrder);
+
+      if (!displayId) {
+        showAlert({
+          type: "error",
+          message:
+            "Order was created but its id could not be confirmed. Please check Track Order.",
+        });
+        return;
+      }
+
+      if (paymentMethod === "cod") {
+        showAlert({
+          type: "success",
+          message: `Order ${displayId} placed successfully.`,
+        });
+        return;
+      }
+
+      setPaymentLoading(true);
+      try {
+        await runOnlinePayment(createdOrder);
+      } catch (paymentError: unknown) {
+        showAlert({
+          type: "error",
+          message: getApiErrorMessage(
+            paymentError,
+            "Payment was not completed. Your order is saved — tap Pay now to retry.",
+          ),
+        });
+      } finally {
+        setPaymentLoading(false);
+      }
+    } catch (error: unknown) {
       showAlert({
         type: "error",
-        message:
-          typeof message === "string"
-            ? message
-            : "We could not place your order. Please try again.",
+        message: getApiErrorMessage(
+          error,
+          "We could not place your order. Please try again.",
+        ),
       });
+    }
+  };
+
+  const handleRetryPayment = async () => {
+    if (!order || !needsOnlineCheckout(order)) {
+      return;
+    }
+
+    setPaymentLoading(true);
+    try {
+      await runOnlinePayment(order);
+    } catch (error: unknown) {
+      showAlert({
+        type: "error",
+        message: getApiErrorMessage(
+          error,
+          "Payment was not completed. Please try again.",
+        ),
+      });
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -244,15 +462,21 @@ export default function CheckoutClient() {
 
       showAlert({
         type: "success",
-        message: `Order ${cancelledOrder.orderNumber} has been cancelled.`,
+        message: `Order ${getOrderDisplayId(cancelledOrder) || orderDisplayId} has been cancelled.`,
       });
-    } catch (message) {
+
+      dispatch(resetCurrentOrder());
+      void dispatch(fetchCart());
+      if (retryOrderId) {
+        router.replace("/checkout");
+      }
+    } catch (error: unknown) {
       showAlert({
         type: "error",
-        message:
-          typeof message === "string"
-            ? message
-            : "Unable to cancel this order right now.",
+        message: getApiErrorMessage(
+          error,
+          "Unable to cancel this order right now.",
+        ),
       });
     }
   };
@@ -290,19 +514,48 @@ export default function CheckoutClient() {
       });
 
       setIsEditingAddress(false);
-    } catch (message) {
+    } catch (error: unknown) {
       showAlert({
         type: "error",
-        message:
-          typeof message === "string"
-            ? message
-            : "Failed to update address.",
+        message: getApiErrorMessage(error, "Failed to update address."),
       });
     }
   };
 
   const hasCartItems = cart.totalItems > 0;
-  const canShowCheckoutForm = hasCartItems && !order;
+  const canShowCheckoutForm = hasCartItems && !showPayNow;
+  const summaryItems = showPayNow && order
+    ? order.items.map((item) => ({
+        key: `${item.productId}-${item.weight}`,
+        name: item.name,
+        image: item.image,
+        meta: item.weight || "",
+        quantity: item.quantity,
+        unitPrice: item.price,
+        lineTotal: item.price * item.quantity,
+      }))
+    : cart.items.map((item) => ({
+        key: item.cartItemId,
+        name: item.name,
+        image: item.image,
+        meta: `${item.category || "Product"}${
+          getVariantKey(item.variant) ? ` - ${getVariantKey(item.variant)}` : ""
+        }`,
+        quantity: item.quantity,
+        unitPrice: item.variant.price,
+        lineTotal: item.variant.price * item.quantity,
+      }));
+  const summaryItemCount = showPayNow && order
+    ? order.items.reduce((sum, item) => sum + item.quantity, 0)
+    : cart.totalItems;
+  const summaryTotal =
+    showPayNow && order ? Number(order.totalAmount || 0) : cart.subtotal;
+  const summaryTitle = showPayNow ? "Order summary" : "Cart summary";
+  const summarySubtitle = showPayNow
+    ? "Items locked on this unpaid order — Online Payment charges this total"
+    : hasCartItems
+      ? "Everything you are about to order"
+      : "Your cart is currently empty";
 
   return (
     <section className="bg-[linear-gradient(180deg,_#fff7ed_0%,_#ffffff_28%,_#f8fafc_100%)]">
@@ -317,7 +570,7 @@ export default function CheckoutClient() {
                 Review your cart and confirm delivery
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                Complete your shipping details, verify your order summary, and place your order with cash on delivery.
+                Complete your shipping details, choose how you want to pay, and confirm your order.
               </p>
             </div>
 
@@ -326,21 +579,31 @@ export default function CheckoutClient() {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-700">
                   Items
                 </p>
-                <p className="mt-1 text-xl font-semibold text-slate-900">{cart.totalItems}</p>
+                <p className="mt-1 text-xl font-semibold text-slate-900">{summaryItemCount}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Subtotal
+                  {showPayNow ? "Order total" : "Subtotal"}
                 </p>
                 <p className="mt-1 text-xl font-semibold text-slate-900">
-                  {currency(cart.subtotal)}
+                  {currency(summaryTotal)}
                 </p>
               </div>
               <div className="rounded-2xl bg-emerald-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
                   Payment
                 </p>
-                <p className="mt-1 text-xl font-semibold text-slate-900">COD</p>
+                <p className="mt-1 text-xl font-semibold text-slate-900">
+                  {showPayNow && order
+                    ? "Awaiting pay"
+                    : order && !showPayNow
+                      ? isOnlinePaymentMethod(order.paymentMethod)
+                        ? "Online Payment"
+                        : "COD"
+                      : paymentMethod === "card"
+                        ? "Online Payment"
+                        : "COD"}
+                </p>
               </div>
             </div>
           </div>
@@ -354,20 +617,16 @@ export default function CheckoutClient() {
                   <ShoppingBag className="h-5 w-5 text-orange-700" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Cart summary</h2>
-                  <p className="text-sm text-slate-500">
-                    {hasCartItems
-                      ? "Everything you are about to order"
-                      : "Your cart is currently empty"}
-                  </p>
+                  <h2 className="text-xl font-semibold text-slate-900">{summaryTitle}</h2>
+                  <p className="text-sm text-slate-500">{summarySubtitle}</p>
                 </div>
               </div>
 
               <div className="mt-6 space-y-4">
-                {hasCartItems ? (
-                  cart.items.map((item) => (
+                {summaryItems.length > 0 ? (
+                  summaryItems.map((item) => (
                     <article
-                      key={item.cartItemId}
+                      key={item.key}
                       className="flex gap-4 rounded-[24px] border border-slate-100 bg-slate-50/80 p-4"
                     >
                       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-white">
@@ -389,12 +648,7 @@ export default function CheckoutClient() {
                             <p className="line-clamp-2 text-base font-semibold text-slate-900">
                               {item.name}
                             </p>
-                            <p className="mt-1 text-sm text-slate-500">
-                              {item.category || "Premium spice"}
-                              {getVariantKey(item.variant)
-                                ? ` - ${getVariantKey(item.variant)}`
-                                : ""}
-                            </p>
+                            <p className="mt-1 text-sm text-slate-500">{item.meta}</p>
                           </div>
                           <p className="text-sm font-semibold text-slate-900">
                             x{item.quantity}
@@ -403,10 +657,10 @@ export default function CheckoutClient() {
 
                         <div className="mt-4 flex items-center justify-between text-sm">
                           <span className="text-slate-500">
-                            {currency(item.variant.price)} each
+                            {currency(item.unitPrice)} each
                           </span>
                           <span className="font-semibold text-slate-900">
-                            {currency(item.variant.price * item.quantity)}
+                            {currency(item.lineTotal)}
                           </span>
                         </div>
                       </div>
@@ -432,34 +686,40 @@ export default function CheckoutClient() {
                 <div className="space-y-3 text-sm text-slate-600">
                   <div className="flex items-center justify-between">
                     <span>Items</span>
-                    <span>{cart.totalItems}</span>
+                    <span>{summaryItemCount}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Subtotal</span>
-                    <span>{currency(cart.subtotal)}</span>
+                    <span>{currency(summaryTotal)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Shipping</span>
-                    <span>Calculated later</span>
+                    <span>Included / calculated on order</span>
                   </div>
                   <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-900">
                     <span>Total payable</span>
-                    <span>{currency(cart.subtotal)}</span>
+                    <span>{currency(summaryTotal)}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {order ? (
+            {order && showPayNow ? (
               <div className="rounded-[30px] border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100">
                     <BadgeCheck className="h-5 w-5 text-emerald-700" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Order placed</h2>
+                    <h2 className="text-xl font-semibold text-slate-900">
+                      {order.paymentStatus === "paid"
+                        ? "Order confirmed"
+                        : "Awaiting payment"}
+                    </h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Your order has been created and is now being prepared.
+                      {order.paymentStatus === "paid"
+                        ? "Payment received. Your order is being prepared."
+                        : "Your order is saved in Track Order. Complete Online Payment to confirm it."}
                     </p>
                   </div>
                 </div>
@@ -469,15 +729,15 @@ export default function CheckoutClient() {
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
                       Order ID
                     </p>
-                    <p className="mt-2 text-sm md:text-base font-semibold text-slate-900">
-                      {order.orderNumber || order.id}
+                    <p className="mt-2 break-all text-sm font-semibold text-slate-900 md:text-base">
+                      {orderDisplayId || "Unavailable"}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                       Status
                     </p>
-                    <p className="mt-2 text-sm md:text-base font-semibold capitalize text-slate-900">
+                    <p className="mt-2 text-sm font-semibold capitalize text-slate-900 md:text-base">
                       {order.orderStatus}
                     </p>
                   </div>
@@ -489,11 +749,30 @@ export default function CheckoutClient() {
                     Payment details
                   </div>
                   <p className="mt-2 text-sm text-slate-600">
-                    Payment method: <span className="font-semibold uppercase">{order.paymentMethod}</span>
+                    Payment method:{" "}
+                    <span className="font-semibold">
+                      {formatPaymentMethodLabel(order.paymentMethod)}
+                    </span>
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
-                    Payment status: <span className="font-semibold capitalize">{order.paymentStatus}</span>
+                    Payment status:{" "}
+                    <span className="font-semibold capitalize">
+                      {order.paymentStatus}
+                    </span>
                   </p>
+
+                  {showPayNow ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleRetryPayment()}
+                      disabled={paymentLoading || orderState.actionLoading}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#7A330F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#5f2609] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    >
+                      {paymentLoading
+                        ? "Opening payment..."
+                        : `Pay ${currency(Number(order.totalAmount || 0))} online`}
+                    </button>
+                  ) : null}
                 </div>
 
                 <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:p-5">
@@ -607,6 +886,54 @@ export default function CheckoutClient() {
                   </p>
                 )}
               </div>
+            ) : order && !showPayNow ? (
+              <div className="rounded-[30px] border border-emerald-200 bg-white p-5 shadow-sm sm:p-6">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100">
+                    <BadgeCheck className="h-5 w-5 text-emerald-700" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900">
+                      {order.paymentStatus === "paid"
+                        ? "Order confirmed"
+                        : "Order placed"}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {order.paymentStatus === "paid"
+                        ? "Payment received. Your order is being prepared."
+                        : "Your order has been created and is now being prepared."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+                      Order ID
+                    </p>
+                    <p className="mt-2 break-all text-sm font-semibold text-slate-900 md:text-base">
+                      {orderDisplayId || "Unavailable"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      Status
+                    </p>
+                    <p className="mt-2 text-sm font-semibold capitalize text-slate-900 md:text-base">
+                      {order.orderStatus}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href="/trackOrder"
+                    className="inline-flex rounded-full bg-[#7A330F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#5f2609]"
+                  >
+                    Track order
+                  </Link>
+                </div>
+              </div>
             ) : null}
           </div>
 
@@ -659,28 +986,76 @@ export default function CheckoutClient() {
                     </p>
                   ) : null}
 
-                  <div className="rounded-[24px] bg-slate-50 p-4 text-sm text-slate-600">
-                    Cash on delivery is currently enabled for checkout. You can review or cancel the order later while it remains pending or confirmed.
+                  <div className="space-y-3 rounded-[24px] border border-orange-100 bg-orange-50/60 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-700">
+                      Payment method
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("card")}
+                        className={`rounded-2xl border px-4 py-3 text-left transition ${
+                          paymentMethod === "card"
+                            ? "border-[#7A330F] bg-white shadow-sm"
+                            : "border-transparent bg-white/70 hover:border-orange-200"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-slate-900">
+                          Online Payment
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          UPI, card, netbanking
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("cod")}
+                        className={`rounded-2xl border px-4 py-3 text-left transition ${
+                          paymentMethod === "cod"
+                            ? "border-[#7A330F] bg-white shadow-sm"
+                            : "border-transparent bg-white/70 hover:border-orange-200"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-slate-900">
+                          Cash on delivery
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Pay when your order arrives
+                        </p>
+                      </button>
+                    </div>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={orderState.actionLoading}
+                    disabled={orderState.actionLoading || paymentLoading}
                     className="inline-flex w-full items-center justify-center rounded-full bg-[#7A330F] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#5f2609] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {orderState.actionLoading ? "Placing order..." : "Place order"}
+                    {orderState.actionLoading
+                      ? "Placing order..."
+                      : paymentLoading
+                        ? "Opening payment..."
+                        : paymentMethod === "card"
+                          ? "Place order & pay"
+                          : "Place order"}
                   </button>
                 </form>
               </div>
             ) : (
               <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-sm sm:p-6">
                 <h2 className="text-xl font-semibold text-slate-900">
-                  {order ? "Order details ready" : "Checkout unavailable"}
+                  {showPayNow && order
+                    ? "Complete payment"
+                    : order
+                      ? "Order details ready"
+                      : "Checkout unavailable"}
                 </h2>
                 <p className="mt-2 text-sm leading-7 text-slate-600">
-                  {order
-                    ? "Your latest order summary is shown here. You can track its status or cancel it while it is still pending or confirmed."
-                    : "Once your cart has items, the shipping form will appear here so you can complete checkout."}
+                  {showPayNow && order
+                    ? "Use Online Payment below to finish this order, or cancel it if you no longer need it."
+                    : order
+                      ? "Your latest order summary is shown here. You can track its status or cancel it while it is still pending or confirmed."
+                      : "Once your cart has items, the shipping form will appear here so you can complete checkout."}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Link
@@ -706,5 +1081,3 @@ export default function CheckoutClient() {
     </section>
   );
 }
-
-

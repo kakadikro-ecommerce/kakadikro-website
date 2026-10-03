@@ -10,9 +10,8 @@ export const generalFaqs = [
             "No, all our spices are 100% natural. We do not use any preservatives, artificial colors, or additives.",
     },
     {
-        question: "How do you ensure quality and hygiene ?",
-        answer:
-            "Our spices are carefully cleaned, processed, and packed using hygienic methods while maintaining traditional techniques.",
+        question: "How should I store spices for maximum freshness?",
+        answer: "Keep them in an airtight container, away from sunlight, heat, and moisture.",
     },
     {
         question: "Do you deliver across Gujarat and India ?",
@@ -20,24 +19,24 @@ export const generalFaqs = [
             "Yes, we deliver across Gujarat and all over India. Orders are processed quickly and shipped safely to your doorstep.",
     },
     {
-        question: "How long does delivery take ?",
+        question: "What products are in Cross Line?",
         answer:
-            "Delivery usually takes 3–5 business days within Gujarat and 5–7 days for other states, depending on your location.",
+            "Cross Line is our agri equipment line. It includes torches, water pumps, and other practical tools for farm and home work.",
     },
     {
-        question: "Can I order in bulk for restaurants or shops ?",
+        question: "Where can I see the specifications for a Cross Line product?",
         answer:
-            "Absolutely! We provide bulk ordering options for restaurants, retailers, and wholesalers. Contact us for special pricing.",
+            "Open the product page. Specifications, variants, price, and stock are shown there.",
     },
     {
-        question: "How should I store spices for maximum freshness ?",
+        question: "Are Cross Line products meant for daily farm and home use?",
         answer:
-            "Store spices in airtight containers away from sunlight, heat, and moisture to maintain their aroma and flavor.",
+            "Yes. They are practical equipment chosen for regular work around the farm and home..",
     },
     {
-        question: "Are your masalas suitable for daily cooking ?",
+        question: "Do you deliver Cross Line equipment across Gujarat and India?",
         answer:
-            "Yes, our spices are specially crafted for everyday Indian cooking, bringing authentic taste to your kitchen.",
+            "Yes. Cross Line orders are delivered across Gujarat and all of India, the same as Cross Life.",
     },
 ];
 
@@ -45,7 +44,7 @@ export const trackOrderFAQs = [
     {
         question: "How can I track my order ?",
         answer:
-            "You can track your order using the order number provided after placing your order. Simply enter the order number on the Track Order page to view the latest status.",
+            "You can track your order using the order id provided after placing your order. Simply enter the order id on the Track Order page to view the latest status.",
     },
     {
         question: "Can I track my order on courier websites ?",
@@ -70,6 +69,6 @@ export const trackOrderFAQs = [
     {
         question: "What do I need to track my order ?",
         answer:
-            "You only need your order number, which is shared with you after successfully placing your order.",
+            "You only need your order id, which is shared with you after successfully placing your order.",
     },
 ];

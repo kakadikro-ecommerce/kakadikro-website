@@ -24,15 +24,11 @@ export default function AboutPreview({ showCTA = true }) {
             About Us
           </h2>
 
-          <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-6 whitespace-pre-line">
-            {`Kakadikro spices brings the authentic taste of traditional Indian spices straight to your kitchen. 
-              Crafted with carefully selected ingredients and blended using time-honored techniques, 
-              our masalas deliver rich aroma and unmatched flavor.
-              Founded with a passion for quality and purity, Kakadikro ensures every product reflects trust,
-              freshness, and the true essence of homemade spices. 
-              Experience the difference with Kakadikro – where every pinch tells a story of heritage and taste.
-              here at Kakadikro, we are committed to providing you with the finest spices that not only enhance your culinary creations but also connect you to the rich tapestry of Indian flavors. 
-              `}
+          <p className="mb-6 text-sm leading-relaxed text-gray-600 md:text-base">
+            Kaka Dikro is a Gujarat-based shop for homes and farms. We sell two
+            lines: Cross Life for agri foods and spices, and Cross Line for agri
+            equipment such as torches and water pumps. Both are chosen for
+            everyday use, so you can see what each line includes before you shop.
           </p>
 
           {showCTA && (

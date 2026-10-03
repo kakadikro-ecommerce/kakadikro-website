@@ -28,16 +28,16 @@ interface RawOrderItem {
   quantity?: number;
 }
 
-interface RawOrder {
+export interface RawOrder {
   _id?: string;
   id?: string;
-  orderNumber?: string;
   items?: RawOrderItem[];
   shippingAddress?: Partial<ShippingAddress>;
   paymentMethod?: string;
   paymentStatus?: string;
   orderStatus?: string;
   subtotal?: number;
+  subtotalAmount?: number;
   totalAmount?: number;
   notes?: string;
   adminNote?: string;
@@ -54,12 +54,17 @@ interface RawOrdersResponse {
 
 interface RawOrderResponse {
   data?: RawOrder;
+  order?: RawOrder;
 }
 
 const DEFAULT_IMAGE = "/assets/kde-logo.png";
 
 const normalizePaymentMethod = (value?: string): PaymentMethod => {
-  return value === "cod" ? value : "cod";
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "card" || normalized === "upi" || normalized === "cod") {
+    return normalized;
+  }
+  return "cod";
 };
 
 const normalizePaymentStatus = (value?: string): PaymentStatus => {
@@ -103,44 +108,69 @@ const mapOrderItem = (item: RawOrderItem): OrderItem => {
     item.product && typeof item.product === "object" ? item.product : undefined;
 
   return {
-    productId:
+    productId: String(
       item.productId ||
-      product?._id ||
-      product?.id ||
-      (typeof item.product === "string" ? item.product : "") ||
-      "",
+        product?._id ||
+        product?.id ||
+        (typeof item.product === "string" ? item.product : "") ||
+        ""
+    ).trim(),
+    // Always prefer immutable order snapshots over live populated product data.
     name: item.name || "Order item",
-    image:
-      item.productImage ||
-      item.image ||
-      product?.images?.[0]?.url ||
-      DEFAULT_IMAGE,
+    image: item.productImage || item.image || DEFAULT_IMAGE,
     weight: item.weight || "",
     price: item.unitPrice ?? item.price ?? 0,
     quantity: item.quantity ?? 1,
   };
 };
 
-const mapOrder = (order: RawOrder): Order => ({
-  id: order._id || order.id || "",
-  orderNumber: order.orderNumber,
-  items: Array.isArray(order.items) ? order.items.map(mapOrderItem) : [],
-  shippingAddress: mapShippingAddress(order.shippingAddress),
-  paymentMethod: normalizePaymentMethod(order.paymentMethod),
-  paymentStatus: normalizePaymentStatus(order.paymentStatus),
-  orderStatus: normalizeOrderStatus(order.orderStatus),
-  subtotal: order.subtotal ?? 0,
-  totalAmount: order.totalAmount ?? 0,
-  notes: order.notes,
-  adminNote: order.adminNote,
-  createdAt: order.createdAt,
-  updatedAt: order.updatedAt,
-  paidAt: order.paidAt,
-  shipment: order.shipment,
-});
+const pickOrderId = (order: RawOrder): string =>
+  String(order._id || order.id || "").trim();
 
-const parseOrderResponse = (payload: RawOrderResponse): Order => {
-  return mapOrder(payload.data || {});
+export const mapOrder = (order: RawOrder): Order => {
+  const id = pickOrderId(order);
+
+  return {
+    id,
+    items: Array.isArray(order.items) ? order.items.map(mapOrderItem) : [],
+    shippingAddress: mapShippingAddress(order.shippingAddress),
+    paymentMethod: normalizePaymentMethod(order.paymentMethod),
+    paymentStatus: normalizePaymentStatus(order.paymentStatus),
+    orderStatus: normalizeOrderStatus(order.orderStatus),
+    subtotal: order.subtotalAmount ?? order.subtotal ?? 0,
+    totalAmount: order.totalAmount ?? 0,
+    notes: order.notes,
+    adminNote: order.adminNote,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    paidAt: order.paidAt,
+    shipment: order.shipment,
+  };
+};
+
+export const getOrderDisplayId = (order?: Pick<Order, "id"> | null) =>
+  order?.id || "";
+
+const extractRawOrder = (payload: RawOrderResponse | RawOrder): RawOrder => {
+  if (!payload || typeof payload !== "object") {
+    return {};
+  }
+
+  if ("data" in payload && payload.data && typeof payload.data === "object") {
+    return payload.data;
+  }
+
+  if ("order" in payload && payload.order && typeof payload.order === "object") {
+    return payload.order;
+  }
+
+  return payload as RawOrder;
+};
+
+export const parseOrderResponse = (
+  payload: RawOrderResponse | RawOrder
+): Order => {
+  return mapOrder(extractRawOrder(payload));
 };
 
 const parseOrdersResponse = (payload: RawOrdersResponse): OrdersResponse => {
@@ -162,7 +192,9 @@ export const getMyOrders = async (): Promise<OrdersResponse> => {
   return parseOrdersResponse(response.data);
 };
 
-export const updateOrder = async (id: string, payload: { shippingAddress?: ShippingAddress; notes?: string }
+export const updateOrder = async (
+  id: string,
+  payload: { shippingAddress?: ShippingAddress; notes?: string }
 ): Promise<Order> => {
   const response = await axios.put<RawOrderResponse>(
     `/user/orders/${id}`,
@@ -177,11 +209,15 @@ export const trackOrder = async (id: string): Promise<Order> => {
     throw new Error("Order id is required.");
   }
 
-  const response = await axios.get<RawOrderResponse>(`/user/orders/tracking/${id}`);
+  const response = await axios.get<RawOrderResponse>(
+    `/user/orders/tracking/${id}`
+  );
   return parseOrderResponse(response.data);
 };
 
 export const cancelOrder = async (id: string): Promise<Order> => {
-  const response = await axios.put<RawOrderResponse>(`/user/orders/cancel/${id}`);
+  const response = await axios.put<RawOrderResponse>(
+    `/user/orders/cancel/${id}`
+  );
   return parseOrderResponse(response.data);
 };

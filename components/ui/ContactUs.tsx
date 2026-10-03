@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ChangeEvent, FormEvent, useState } from "react";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 import { useSelector } from "react-redux";
 
 import { showAlert } from "@/components/ui/alert";
@@ -10,6 +10,11 @@ import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { submitContact } from "@/redux/slice/contactSlice";
 import { RootState } from "@/redux/store";
 import { contactSchema, type ContactFormData } from "@/lib/validations/contact.validation";
+import {
+  mapApiDetailsToFields,
+  parseApiError,
+  type ParsedApiError,
+} from "@/lib/apiError";
 
 type ContactFormErrors = Partial<Record<keyof ContactFormData, string>>;
 
@@ -17,8 +22,17 @@ const initialFormData: ContactFormData = {
   name: "",
   email: "",
   phone: "",
+  subject: "",
   message: "",
 };
+
+const isRejectedContactError = (error: unknown): error is ParsedApiError =>
+  Boolean(
+    error &&
+      typeof error === "object" &&
+      "message" in error &&
+      typeof error.message === "string",
+  );
 
 const inputClassName =
   "w-full rounded-2xl border bg-white px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
@@ -63,19 +77,33 @@ export default function ContactUs() {
     }
 
     try {
-      await dispatch(submitContact(formData)).unwrap();
+      await dispatch(
+        submitContact({
+          name: result.data.name,
+          email: result.data.email,
+          phone: result.data.phone,
+          subject: result.data.subject,
+          message: result.data.message,
+        }),
+      ).unwrap();
       setIsSubmitted(true);
       setFormData(initialFormData);
       setErrors({});
     } catch (error: unknown) {
+      const parsed = isRejectedContactError(error)
+        ? error
+        : parseApiError(error, "Failed to send message. Please try again.");
+
+      if (parsed.details) {
+        setErrors((prev) => ({
+          ...prev,
+          ...mapApiDetailsToFields(parsed.details),
+        }));
+      }
+
       showAlert({
         type: "error",
-        message:
-          typeof error === "string"
-            ? error
-            : error instanceof Error
-              ? error.message
-              : "Failed to send message",
+        message: parsed.message,
       });
     }
   };
@@ -129,7 +157,7 @@ export default function ContactUs() {
                   <div>
                     <p className="text-sm font-semibold">Address</p>
                     <p className="mt-1 text-sm leading-6 text-orange-50/85">
-                      Kakadikro spices, Ahmedabad, Gujarat, India
+                    Parvat patiya, Surat, 395010, Gujarat, India
                     </p>
                   </div>
                 </div>
@@ -178,7 +206,8 @@ export default function ContactUs() {
                   </h3>
 
                   <p className="mt-3 text-sm text-slate-600">
-                    We&apos;ve received your message and will connect with you shortly.
+                    We&apos;ve received your message and sent a confirmation to your email.
+                    Our team will connect with you shortly.
                   </p>
 
                   <button
@@ -254,6 +283,22 @@ export default function ContactUs() {
                         />
                         {errors.phone ? <p className="mt-2 text-sm text-red-500">{errors.phone}</p> : null}
                       </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="subject" className="mb-2 block text-sm font-medium text-slate-700">
+                        Subject <span className="font-normal text-slate-400">(optional)</span>
+                      </label>
+                      <input
+                        id="subject"
+                        name="subject"
+                        type="text"
+                        value={formData.subject}
+                        onChange={handleChange}
+                        placeholder="What is this about?"
+                        className={`${inputClassName} ${errors.subject ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-orange-100"}`}
+                      />
+                      {errors.subject ? <p className="mt-2 text-sm text-red-500">{errors.subject}</p> : null}
                     </div>
 
                     <div>

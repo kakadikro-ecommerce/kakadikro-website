@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { ContactState } from "@/types/contact";
+import { ParsedApiError, parseApiError } from "@/lib/apiError";
+import { ContactPayload, ContactState } from "@/types/contact";
 import { createContact } from "@/redux/api/contactApi";
 
 const initialState: ContactState = {
@@ -8,18 +9,19 @@ const initialState: ContactState = {
     error: null,
 };
 
-export const submitContact = createAsyncThunk(
+export const submitContact = createAsyncThunk<
+    unknown,
+    ContactPayload,
+    { rejectValue: ParsedApiError }
+>(
     "contact/submit",
-    async (data: {
-        name: string;
-        email: string;
-        phone: string;
-        message: string;
-    }, { rejectWithValue }) => {
+    async (data, { rejectWithValue }) => {
         try {
             return await createContact(data);
-        } catch (error: any) {
-            return rejectWithValue(error.response?.data?.message || "Something went wrong");
+        } catch (error: unknown) {
+            return rejectWithValue(
+                parseApiError(error, "Failed to send message. Please try again."),
+            );
         }
     }
 );
@@ -45,10 +47,12 @@ const contactSlice = createSlice({
                 state.loading = false;
                 state.success = true;
             })
-            .addCase(submitContact.rejected, (state, action: any) => {
+            .addCase(submitContact.rejected, (state, action) => {
                 state.loading = false;
                 state.success = false;
-                state.error = action.payload;
+                state.error =
+                    action.payload?.message ||
+                    "Failed to send message. Please try again.";
             });
     },
 });

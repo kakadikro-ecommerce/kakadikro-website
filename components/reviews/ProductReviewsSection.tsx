@@ -8,9 +8,11 @@ import ReviewForm from "@/components/reviews/ReviewForm";
 import ReviewList from "@/components/reviews/ReviewList";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { getApiErrorMessage } from "@/lib/apiError";
 import type { CreateReviewInput } from "@/lib/validations/review";
 import {
   editReview,
+  EMPTY_REVIEWS,
   fetchReviewsByProductId,
   removeReview,
   submitReview,
@@ -36,8 +38,12 @@ export default function ProductReviewsSection({
   const [createError, setCreateError] = useState<string | null>(null);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
   const { currentUser } = useAppSelector((state) => state.user);
-  const reviews = useAppSelector((state) => state.reviews.byProductId[productId] || []);
-  const loading = useAppSelector((state) => state.reviews.loadingByProductId[productId] || false);
+  const reviews = useAppSelector(
+    (state) => state.reviews.byProductId[productId] ?? EMPTY_REVIEWS,
+  );
+  const loading = useAppSelector(
+    (state) => state.reviews.loadingByProductId[productId] ?? false,
+  );
   const error = useAppSelector((state) => state.reviews.errorByProductId[productId]);
   const mutationLoading = useAppSelector((state) => state.reviews.mutationLoading);
 
@@ -103,11 +109,11 @@ export default function ProductReviewsSection({
       await dispatch(submitReview(values)).unwrap();
       showAlert({ type: "success", message: "Your review has been posted." });
       void dispatch(fetchReviewsByProductId({ productId }));
-    } catch (message) {
-      const errorMessage =
-        typeof message === "string"
-          ? message
-          : "Unable to post review right now.";
+    } catch (error: unknown) {
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Unable to post review right now.",
+      );
       setCreateError(
         errorMessage.includes("delivered orders")
           ? "You can only review products from delivered orders. Please buy and receive this product before posting a review."
@@ -123,10 +129,10 @@ export default function ProductReviewsSection({
       setEditingReview(null);
       showAlert({ type: "success", message: "Your review was updated." });
       void dispatch(fetchReviewsByProductId({ productId }));
-    } catch (message) {
+    } catch (error: unknown) {
       showAlert({
         type: "error",
-        message: typeof message === "string" ? message : "Unable to update review right now.",
+        message: getApiErrorMessage(error, "Unable to update review right now."),
       });
     }
   };
@@ -140,10 +146,10 @@ export default function ProductReviewsSection({
       await dispatch(removeReview(reviewId)).unwrap();
       showAlert({ type: "success", message: "Your review was deleted." });
       void dispatch(fetchReviewsByProductId({ productId }));
-    } catch (message) {
+    } catch (error: unknown) {
       showAlert({
         type: "error",
-        message: typeof message === "string" ? message : "Unable to delete review right now.",
+        message: getApiErrorMessage(error, "Unable to delete review right now."),
       });
     }
   };

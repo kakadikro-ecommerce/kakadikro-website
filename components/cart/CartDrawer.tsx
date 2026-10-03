@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { showAlert } from "@/components/ui/alert";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { getApiErrorMessage } from "@/lib/apiError";
 import {
   clearCartItems,
   closeCart,
@@ -30,10 +31,10 @@ export default function CartDrawer() {
 
     void dispatch(updateCartItem({ itemId, quantity }))
       .unwrap()
-      .catch((message: string) => {
+      .catch((error: unknown) => {
         showAlert({
           type: "error",
-          message: message || "Failed to update cart item.",
+          message: getApiErrorMessage(error, "Failed to update cart item."),
         });
       });
   };
@@ -47,10 +48,10 @@ export default function CartDrawer() {
           message: "Item removed from cart.",
         });
       })
-      .catch((message: string) => {
+      .catch((error: unknown) => {
         showAlert({
           type: "error",
-          message: message || "Failed to remove cart item.",
+          message: getApiErrorMessage(error, "Failed to remove cart item."),
         });
       });
   };
@@ -64,10 +65,10 @@ export default function CartDrawer() {
           message: "Cart cleared successfully.",
         });
       })
-      .catch((message: string) => {
+      .catch((error: unknown) => {
         showAlert({
           type: "error",
-          message: message || "Failed to clear cart.",
+          message: getApiErrorMessage(error, "Failed to clear cart."),
         });
       });
   };

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
+import { getApiErrorMessage } from "@/lib/apiError";
 import * as cartApi from "@/redux/api/cartApi";
 import type { CartSummary } from "@/types/product";
 
@@ -34,9 +35,7 @@ export const fetchCart = createAsyncThunk<
   try {
     return await cartApi.getMyCart();
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch cart.";
-    return rejectWithValue(message);
+    return rejectWithValue(getApiErrorMessage(error, "Failed to fetch cart."));
   }
 });
 
@@ -48,9 +47,9 @@ export const addCartItem = createAsyncThunk<
   try {
     return await cartApi.addItemToCart(payload);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to add item to cart.";
-    return rejectWithValue(message);
+    return rejectWithValue(
+      getApiErrorMessage(error, "Failed to add item to cart."),
+    );
   }
 });
 
@@ -62,9 +61,9 @@ export const updateCartItem = createAsyncThunk<
   try {
     return await cartApi.updateCartItemQuantity(itemId, { quantity });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to update cart item.";
-    return rejectWithValue(message);
+    return rejectWithValue(
+      getApiErrorMessage(error, "Failed to update cart item."),
+    );
   }
 });
 
@@ -76,9 +75,9 @@ export const removeCartItem = createAsyncThunk<
   try {
     return await cartApi.removeCartItem(itemId);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to remove cart item.";
-    return rejectWithValue(message);
+    return rejectWithValue(
+      getApiErrorMessage(error, "Failed to remove cart item."),
+    );
   }
 });
 
@@ -90,9 +89,7 @@ export const clearCartItems = createAsyncThunk<
   try {
     return await cartApi.clearCart();
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to clear cart.";
-    return rejectWithValue(message);
+    return rejectWithValue(getApiErrorMessage(error, "Failed to clear cart."));
   }
 });
 

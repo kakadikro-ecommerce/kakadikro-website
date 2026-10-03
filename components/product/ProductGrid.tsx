@@ -15,7 +15,7 @@ import {
 import { PRODUCT_TYPE_OPTIONS } from "@/lib/variantLabel";
 import { fetchProducts } from "@/redux/slice/productSlice";
 import { getAllProducts } from "@/redux/api/productApi";
-import type { Product, ProductType } from "@/types/product";
+import { resolveProductType, type Product, type ProductType } from "@/types/product";
 import Loader from "@/components/ui/Loader";
 
 interface ProductGridProps {
@@ -45,13 +45,8 @@ function ProductSkeletonCard() {
   );
 }
 
-const normalizeProductType = (value?: string | null): "" | ProductType => {
-  const normalized = String(value || "").trim().toUpperCase();
-  if (normalized === "GROCERY" || normalized === "ELECTRONICS") {
-    return normalized;
-  }
-  return "";
-};
+const normalizeProductType = (value?: string | null): "" | ProductType =>
+  resolveProductType(value);
 
 export default function ProductGrid({
   title,
@@ -338,10 +333,12 @@ export default function ProductGrid({
         ) : null}
 
         <div className="flex-1">
-          {gridLoading ? (
+          {gridLoading && visibleProducts.length === 0 ? (
             showControls ? (
               <Loader
                 label="Loading products"
+                fullScreen={false}
+                overlay={false}
                 className="rounded-3xl border border-orange-100 bg-white"
                 size="lg"
               />

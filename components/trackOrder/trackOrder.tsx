@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import {
   AlertCircle,
   Clock,
+  CreditCard,
   House,
   Mailbox,
   Map,
@@ -25,10 +27,17 @@ import {
 
 import { showAlert } from "@/components/ui/alert";
 import CatalogImage from "@/components/ui/CatalogImage";
+import TrackOrderItemReview from "@/components/reviews/TrackOrderItemReview";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
-import TrackOrderItemReview from "@/components/reviews/TrackOrderItemReview";
+import { getApiErrorMessage } from "@/lib/apiError";
+import {
+  formatPaymentMethodLabel,
+  formatPaymentStatusLabel,
+  needsOnlineCheckout,
+} from "@/lib/paymentLabels";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
+import { getOrderDisplayId } from "@/redux/api/orderApi";
 import {
   cancelExistingOrder,
   clearOrderError,
@@ -179,13 +188,12 @@ const TrackOrder = () => {
         setIsEditingAddress(false);
         setShowMyOrders(false);
       })
-      .catch((message) => {
+      .catch((error: unknown) => {
         setSelectedOrder(null);
         setIsEditingAddress(false);
         showAlert({
           type: "error",
-          message:
-            typeof message === "string" ? message : "Unable to find that order.",
+          message: getApiErrorMessage(error, "Unable to find that order."),
         });
       });
   };
@@ -200,13 +208,13 @@ const TrackOrder = () => {
           setSelectedOrder(res.orders[0]);
         }
       })
-      .catch((message) => {
+      .catch((error: unknown) => {
         showAlert({
           type: "error",
-          message:
-            typeof message === "string"
-              ? message
-              : "Unable to load your order history right now.",
+          message: getApiErrorMessage(
+            error,
+            "Unable to load your order history right now.",
+          ),
         });
       });
   };
@@ -231,13 +239,13 @@ const TrackOrder = () => {
         setSelectedOrder(res);
         setIsEditingAddress(false);
       })
-      .catch((message) => {
+      .catch((error: unknown) => {
         showAlert({
           type: "error",
-          message:
-            typeof message === "string"
-              ? message
-              : "Unable to open order details right now.",
+          message: getApiErrorMessage(
+            error,
+            "Unable to open order details right now.",
+          ),
         });
       })
       .finally(() => {
@@ -245,11 +253,13 @@ const TrackOrder = () => {
       });
   };
 
-  const selectedOrderId = selectedOrder?.id;
   const activeOrder = useMemo(() => {
-    if (!selectedOrderId) return selectedOrder;
-    return orders.find((entry) => entry.id === selectedOrderId) || selectedOrder;
-  }, [orders, selectedOrder, selectedOrderId]);
+    // Prefer the freshly fetched detail payload over the list cache.
+    if (selectedOrder) {
+      return selectedOrder;
+    }
+    return null;
+  }, [selectedOrder]);
 
   const canEditAddress = !!activeOrder && canCancelOrder(activeOrder.orderStatus);
   const {
@@ -301,11 +311,13 @@ const TrackOrder = () => {
         type: "success",
         message: "Delivery address updated successfully.",
       });
-    } catch (message) {
+    } catch (error: unknown) {
       showAlert({
         type: "error",
-        message:
-          typeof message === "string" ? message : "Failed to update delivery address.",
+        message: getApiErrorMessage(
+          error,
+          "Failed to update delivery address.",
+        ),
       });
     }
   };
@@ -423,30 +435,39 @@ const TrackOrder = () => {
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                     {orders.map((ord) => {
+                      const displayId = getOrderDisplayId(ord);
                       const isActive = activeOrder?.id === ord.id;
                       const isLoadingCard = detailsLoadingId === ord.id;
+                      const awaitingPayment = needsOnlineCheckout(ord);
 
                       return (
-                        <button
+                        <div
                           key={ord.id}
-                          type="button"
-                          onClick={() => handleSelectOrder(ord.id)}
-                          className={`w-fit rounded-2xl border p-4 text-left transition ${isActive
+                          className={`min-w-0 overflow-hidden rounded-2xl border p-4 transition ${isActive
                             ? "border-[#0d5d6c] bg-[#f2fbf8] shadow-sm"
                             : "border-[#d9ebe6] bg-white hover:border-[#98c8bd] hover:bg-[#fbfefd]"
                             }`}
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectOrder(ord.id)}
+                            className="w-full text-left"
+                          >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm text-gray-500">Order ID</p>
-                              <p className="font-semibold text-[#003d4d]">
-                                {ord.id}
+                              <p className="break-all font-semibold text-[#003d4d]">
+                                {displayId}
                               </p>
                             </div>
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusStyles[ord.orderStatus]}`}
+                              className={`inline-flex max-w-full shrink-0 items-center rounded-full px-2.5 py-1 text-center text-[11px] font-semibold capitalize leading-tight ${
+                                awaitingPayment
+                                  ? "bg-amber-100 text-amber-800"
+                                  : statusStyles[ord.orderStatus]
+                              }`}
                             >
-                              {ord.orderStatus}
+                              {awaitingPayment ? "Awaiting payment" : ord.orderStatus}
                             </span>
                           </div>
 
@@ -472,7 +493,19 @@ const TrackOrder = () => {
                           <div className="mt-4 text-xs font-medium text-[#0d5d6c]">
                             {isLoadingCard ? "Opening details..." : "View full details"}
                           </div>
-                        </button>
+                          </button>
+
+                          {awaitingPayment ? (
+                            <Link
+                              href={`/checkout?orderId=${encodeURIComponent(ord.id)}`}
+                              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#7A330F] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5f2609]"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              Checkout
+                            </Link>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>
@@ -501,16 +534,16 @@ const TrackOrder = () => {
                     <div className="space-y-2">
                       <p className="text-sm text-white/70">Order summary</p>
                       <h2 className="text-2xl font-semibold">
-                        {activeOrder.orderNumber}
+                        {getOrderDisplayId(activeOrder)}
                       </h2>
                       <p className="max-w-2xl text-sm text-white/80">
                         {getStatusCopy(activeOrder.orderStatus)}
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex max-w-full flex-wrap items-center gap-3">
                       <div
-                        className={`inline-flex w-fit items-center rounded-full px-4 py-2 text-sm font-semibold capitalize ${statusStyles[activeOrder.orderStatus]
+                        className={`inline-flex max-w-full items-center rounded-full px-4 py-2 text-sm font-semibold capitalize ${statusStyles[activeOrder.orderStatus]
                           }`}
                       >
                         {activeOrder.orderStatus}
@@ -539,8 +572,9 @@ const TrackOrder = () => {
                       <p className="text-xs uppercase tracking-[0.18em] text-gray-400">
                         Payment
                       </p>
-                      <p className="mt-2 text-base font-semibold capitalize text-[#003d4d]">
-                        {activeOrder.paymentMethod} / {activeOrder.paymentStatus}
+                      <p className="mt-2 text-base font-semibold text-[#003d4d]">
+                        {formatPaymentMethodLabel(activeOrder.paymentMethod)} /{" "}
+                        {formatPaymentStatusLabel(activeOrder.paymentStatus)}
                       </p>
                     </div>
                     <div className="rounded-2xl border border-[#d9ebe6] bg-[#fbfefd] p-4">
@@ -554,12 +588,12 @@ const TrackOrder = () => {
                   </div>
 
                   <div className="rounded-2xl border border-[#d9ebe6] p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                       <h3 className="text-lg font-semibold text-[#003d4d]">
                         Tracking progress
                       </h3>
                       {activeOrder.shipment?.trackingId && (
-                        <span className="rounded-full bg-[#eef7f4] px-3 py-1 text-xs font-medium text-[#0d5d6c]">
+                        <span className="max-w-full break-all rounded-full bg-[#eef7f4] px-3 py-1 text-xs font-medium text-[#0d5d6c]">
                           Tracking ID: {activeOrder.shipment.trackingId}
                         </span>
                       )}
@@ -572,13 +606,13 @@ const TrackOrder = () => {
                           <p className="font-semibold">Order cancelled</p>
                           <p className="mt-1 text-sm">
                             This order is no longer active. If you need help,
-                            please contact support with your order number.
+                            please contact support with your order id.
                           </p>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div className="grid gap-4 sm:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                           {STATUS_STEPS.map((step, index) => {
                             const isComplete = index <= currentStepIndex;
                             const isCurrent = activeOrder.orderStatus === step;
@@ -591,20 +625,20 @@ const TrackOrder = () => {
                                   : "border-gray-200 bg-gray-50"
                                   }`}
                               >
-                                <div className="mb-3 flex items-center justify-between">
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                                   {isComplete ? (
-                                    <PackageCheck className="h-5 w-5 text-emerald-600" />
+                                    <PackageCheck className="h-5 w-5 shrink-0 text-emerald-600" />
                                   ) : (
-                                    <Clock className="h-5 w-5 text-gray-400" />
+                                    <Clock className="h-5 w-5 shrink-0 text-gray-400" />
                                   )}
                                   {isCurrent && (
-                                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                                       Current
                                     </span>
                                   )}
                                 </div>
                                 <p
-                                  className={`text-sm font-semibold capitalize ${isComplete ? "text-emerald-700" : "text-gray-500"
+                                  className={`break-words text-sm font-semibold capitalize ${isComplete ? "text-emerald-700" : "text-gray-500"
                                     }`}
                                 >
                                   {step}
@@ -666,8 +700,7 @@ const TrackOrder = () => {
                                 height={80}
                                 className="h-20 w-20 rounded-2xl border border-[#e4f0ed] bg-[#f8fbfa] object-cover"
                                 onExpired={() => {
-                                  const orderId =
-                                    activeOrder.orderNumber || activeOrder.id;
+                                  const orderId = activeOrder.id;
                                   if (!orderId) {
                                     return;
                                   }
@@ -813,16 +846,16 @@ const TrackOrder = () => {
                               setSelectedOrder(res);
                               showAlert({
                                 type: "success",
-                                message: `Order ${res.orderNumber} has been cancelled.`,
+                                message: `Order ${getOrderDisplayId(res)} has been cancelled.`,
                               });
                             })
-                            .catch((message) => {
+                            .catch((error: unknown) => {
                               showAlert({
                                 type: "error",
-                                message:
-                                  typeof message === "string"
-                                    ? message
-                                    : "Failed to cancel the order.",
+                                message: getApiErrorMessage(
+                                  error,
+                                  "Failed to cancel the order.",
+                                ),
                               });
                             })
                         }
@@ -832,6 +865,16 @@ const TrackOrder = () => {
                         {actionLoading ? "Cancelling order..." : "Cancel Order"}
                       </button>
                     )}
+
+                    {needsOnlineCheckout(activeOrder) ? (
+                      <Link
+                        href={`/checkout?orderId=${encodeURIComponent(activeOrder.id)}`}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#7A330F] px-5 py-3 font-semibold text-white transition hover:bg-[#5f2609]"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        Checkout
+                      </Link>
+                    ) : null}
 
 
                   </div>

@@ -12,6 +12,11 @@ import Button from "../ui/Button";
 import InputField from "../ui/Input";
 import { showAlert } from "../ui/alert";
 import { registerUser } from "@/redux/api/userApi";
+import {
+  getApiErrorMessage,
+  mapApiDetailsToFields,
+  parseApiError,
+} from "@/lib/apiError";
 
 function RegisterContent() {
   const router = useRouter();
@@ -19,6 +24,7 @@ function RegisterContent() {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -41,25 +47,21 @@ function RegisterContent() {
         router.replace(`/login?email=${encodeURIComponent(data.email)}`);
       }, 1500);
     } catch (error: unknown) {
-      const errorMessage =
-        typeof error === "object" &&
-          error !== null &&
-          "response" in error &&
-          typeof error.response === "object" &&
-          error.response !== null &&
-          "data" in error.response &&
-          typeof error.response.data === "object" &&
-          error.response.data !== null &&
-          "message" in error.response.data &&
-          typeof error.response.data.message === "string"
-          ? error.response.data.message
-          : error instanceof Error
-            ? error.message
-            : "Registration failed.";
+      const parsed = parseApiError(error, "Registration failed. Please try again.");
+      const fieldErrors = mapApiDetailsToFields(parsed.details);
+
+      Object.entries(fieldErrors).forEach(([field, message]) => {
+        if (field === "name" || field === "email" || field === "password") {
+          setError(field, { type: "server", message });
+        }
+      });
 
       showAlert({
         type: "error",
-        message: errorMessage,
+        message: getApiErrorMessage(
+          error,
+          "Registration failed. Please try again.",
+        ),
       });
     }
   };

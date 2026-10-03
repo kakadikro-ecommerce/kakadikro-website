@@ -14,6 +14,11 @@ import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { setAuthSession } from "@/redux/slice/userSlice";
 import { loginUser } from "@/redux/api/userApi";
 import { setAccessToken, setStoredUser } from "@/lib/auth";
+import {
+  getApiErrorMessage,
+  mapApiDetailsToFields,
+  parseApiError,
+} from "@/lib/apiError";
 import AuthPageGuard from "./AuthPageGuard";
 
 function LoginContent() {
@@ -26,6 +31,7 @@ function LoginContent() {
     handleSubmit,
     setValue,
     reset,
+    setError,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -70,25 +76,24 @@ function LoginContent() {
       const redirectPath = searchParams.get("redirect") || "/";
       router.replace(redirectPath);
     } catch (error: unknown) {
-      const errorMessage =
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof error.response === "object" &&
-        error.response !== null &&
-        "data" in error.response &&
-        typeof error.response.data === "object" &&
-        error.response.data !== null &&
-        "message" in error.response.data &&
-        typeof error.response.data.message === "string"
-          ? error.response.data.message
-          : error instanceof Error
-            ? error.message
-            : "Login failed. Please check your credentials.";
+      const parsed = parseApiError(
+        error,
+        "Login failed. Please check your credentials.",
+      );
+      const fieldErrors = mapApiDetailsToFields(parsed.details);
+
+      Object.entries(fieldErrors).forEach(([field, message]) => {
+        if (field === "email" || field === "password") {
+          setError(field, { type: "server", message });
+        }
+      });
 
       showAlert({
         type: "error",
-        message: errorMessage,
+        message: getApiErrorMessage(
+          error,
+          "Login failed. Please check your credentials.",
+        ),
       });
     }
   };

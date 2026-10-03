@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import ProductPageClient from "./ProductPageClient";
 import { buildMetadata } from "@/app/seo";
 import { getProductBySlug } from "@/redux/api/productApi";
+import { isCrossLineType } from "@/types/product";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,8 +32,8 @@ export async function generateMetadata({
       description:
         product.shortDescription ||
         product.description ||
-        (String(product.productType || "").toUpperCase() === "ELECTRONICS"
-          ? `Explore ${product.name} from Kaka Dikro's electronics collection.`
+        (isCrossLineType(product.productType)
+          ? `Explore ${product.name} from Kaka Dikro's Cross Line collection.`
           : `Explore ${product.name} from Kaka Dikro's authentic masala collection.`),
       path: `/products/${slug}`,
       keywords: [product.name, product.category, product.brand, ...(product.tags || [])].filter(

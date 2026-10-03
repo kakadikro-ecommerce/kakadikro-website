@@ -19,14 +19,14 @@ const Footer = () => {
             <Link href="/" className="flex items-center shrink-0 cursor-pointer">
               <div className="h-16 md:h-20 flex items-center">
                 <img
-                  src="/assets/kde-logo.png"
+                  src="/assets/logo.png"
                   alt="Logo"
-                  className="h-28 w-auto object-contain md:h-36 sm:h-32 -translate-y-2 md:-translate-y-3"
+                  className="h-16 w-auto object-contain md:h-20 sm:h-16 -translate-y-2 md:-translate-y-3"
                 />
               </div>
             </Link>
             <p className="text-xs sm:text-sm md:text-[14px] text-[#003d4d] leading-relaxed max-w-[260px] font-bold">
-              132, Poonam Farm, Navi Pardi, Kamrej, Surat - 394150 Gujarat, India.
+              Parvat patiya, Surat -395010 Gujarat, India.
             </p>
 
             <div className="flex flex-col gap-1 text-xs sm:text-sm text-[#003d4d]">

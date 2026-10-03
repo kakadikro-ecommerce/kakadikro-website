@@ -13,7 +13,7 @@ export const PAYMENT_STATUSES = [
   "refunded",
 ] as const;
 
-export const PAYMENT_METHODS = ["cod"] as const;
+export const PAYMENT_METHODS = ["cod", "card", "upi"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
@@ -48,7 +48,6 @@ export interface ShipmentDetails {
 
 export interface Order {
   id: string;
-  orderNumber?: string;
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   paymentMethod: PaymentMethod;

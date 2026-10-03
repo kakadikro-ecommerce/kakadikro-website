@@ -7,6 +7,7 @@ import { showAlert } from "@/components/ui/alert";
 import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { getApiErrorMessage } from "@/lib/apiError";
 import {
   formatStockLabel,
   getProductTypeCatalog,
@@ -35,6 +36,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     getVariantKey(product.variants?.[0]) || "",
   );
   const [imageSrc, setImageSrc] = useState(product.images?.[0]?.url);
+  const imageCount = product.images?.filter((image) => Boolean(image?.url)).length ?? 0;
 
   useEffect(() => {
     setImageSrc(product.images?.[0]?.url);
@@ -44,7 +46,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     findVariantByKey(product.variants, selectedKey) || product.variants?.[0];
   const selectedVariantKey = getVariantKey(selectedVariant);
 
-  const productId = product.id || product._id || product.slug;
+  const productId = String(product.id || product._id || "").trim();
   const price = selectedVariant?.price;
   const mrp = selectedVariant?.mrp;
   const hasDiscount = typeof mrp === "number" && typeof price === "number" && mrp > price;
@@ -86,6 +88,14 @@ export default function ProductCard({ product }: ProductCardProps) {
       return;
     }
 
+    if (!productId) {
+      showAlert({
+        type: "error",
+        message: "This product is missing an id. Please refresh and try again.",
+      });
+      return;
+    }
+
     if (isOutOfStock) {
       return;
     }
@@ -110,14 +120,16 @@ export default function ProductCard({ product }: ProductCardProps) {
           message: `${product.name} (${selectedVariantKey}) added to cart.`,
         });
       })
-      .catch((error: string) => {
-        if (error?.toLowerCase().includes("out of stock")) {
+      .catch((error: unknown) => {
+        const message = getApiErrorMessage(error, "Failed to add item to cart.");
+
+        if (message.toLowerCase().includes("out of stock")) {
           return;
         }
 
         showAlert({
           type: "error",
-          message: error || "Failed to add item to cart.",
+          message,
         });
       });
   };
@@ -132,12 +144,17 @@ export default function ProductCard({ product }: ProductCardProps) {
         <CatalogImage
           src={imageSrc}
           fallback="/kde-logo.png"
-          alt={product.name}
+          alt={product.images?.[0]?.altText || product.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
           className="object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
           onExpired={handleExpiredImage}
         />
+        {imageCount > 1 ? (
+          <span className="absolute right-2.5 top-2.5 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white backdrop-blur-sm">
+            {imageCount} photos
+          </span>
+        ) : null}
         <div className="absolute inset-0 bg-black/40 transition-opacity duration-300 group-hover:bg-black/10" />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-4 py-3 text-left">
           <div className="flex flex-wrap items-center gap-2">

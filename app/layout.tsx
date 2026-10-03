@@ -2,9 +2,9 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import ChatWidget from "@/components/chat/ChatWidget";
 import ReduxProvider from "@/redux/provider";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import AppToaster from "@/components/ui/AppToaster";
 import { siteConfig } from "@/app/seo";
 
 export const metadata: Metadata = {
@@ -85,10 +85,11 @@ export default function RootLayout({
       </head>
       <body className="bg-gray-100 min-h-screen flex flex-col" suppressHydrationWarning>
         <ReduxProvider>
-          <ToastContainer position="top-right" autoClose={2500} theme="light" />
+          <AppToaster />
           <Header />
           <main className="flex-grow">{children}</main>
           <Footer />
+          <ChatWidget />
         </ReduxProvider>
       </body>
     </html>

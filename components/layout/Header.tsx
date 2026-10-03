@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, Search, ShoppingCart, User, X, ChevronDown } from "lucide-react";
@@ -15,7 +15,6 @@ import { logoutUser } from "@/redux/slice/userSlice";
 import { Product } from "@/types/product";
 import { getAllProducts } from "@/redux/api/productApi";
 import { logoutApi } from "@/redux/api/userApi";
-import Loader from "@/components/ui/Loader";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -26,8 +25,8 @@ const navItems = [
 
 const productLinks = [
   { href: "/products", label: "All Products" },
-  { href: "/products?type=GROCERY", label: "Grocery" },
-  { href: "/products?type=ELECTRONICS", label: "Electronics" },
+  { href: "/products?type=CROSSLIFE", label: "Cross Life — Foods & Spices" },
+  { href: "/products?type=CROSSLINE", label: "Cross Line — Agri Equipment" },
 ];
 
 const Header = () => {
@@ -45,38 +44,46 @@ const Header = () => {
   const cartCount = useAppSelector((state) => state.cart.totalItems);
   const currentUser = useAppSelector((state) => state.user.currentUser);
   const dispatch = useAppDispatch();
+  const searchRequestId = useRef(0);
+  const searchPending = searchTerm.trim() !== debouncedSearch.trim();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
+      setDebouncedSearch(searchTerm.trim());
     }, 400);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
   useEffect(() => {
-    if (!debouncedSearch) {
+    const term = debouncedSearch.trim();
+    if (!term) {
+      searchRequestId.current += 1;
       setResults([]);
+      setLoading(false);
       return;
     }
 
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const res = await getAllProducts({ search: debouncedSearch, limit: 5 });
+    const requestId = ++searchRequestId.current;
+    setLoading(true);
+
+    void getAllProducts({ search: term, limit: 5 })
+      .then((res) => {
+        if (requestId !== searchRequestId.current) return;
         setResults(res.items);
-      } catch {
+      })
+      .catch(() => {
+        if (requestId !== searchRequestId.current) return;
         setResults([]);
         showAlert({
           type: "error",
           message: "Unable to search products right now.",
         });
-      } finally {
+      })
+      .finally(() => {
+        if (requestId !== searchRequestId.current) return;
         setLoading(false);
-      }
-    };
-
-    fetchProducts();
+      });
   }, [debouncedSearch]);
 
   const refreshSearchResults = () => {
@@ -117,14 +124,12 @@ const Header = () => {
       >
         <div className="container mx-auto px-4 md:px-6 xl:px-8">
           <div className="flex items-center justify-between gap-3 py-2 md:gap-6">
-            <Link href="/" className="flex shrink-0 items-center">
-              <div className="flex h-16 items-center md:h-20">
-                <img
-                  src="/assets/kde-logo.png"
-                  alt="Kaka Dikro"
-                  className="h-28 w-auto object-contain md:h-36 sm:h-32 -translate-y-2 md:-translate-y-3"
-                />
-              </div>
+            <Link href="/" className="flex shrink-0 items-center self-center">
+              <img
+                src="/assets/logo.png"
+                alt="Kaka Dikro"
+                className="h-16 w-auto object-contain md:h-20"
+              />
             </Link>
 
             <nav className="hidden flex-1 items-center justify-center gap-8 whitespace-nowrap font-[family-name:var(--font-serif-stack)] text-[14px] font-bold text-[#003d4d] lg:flex xl:gap-12 xl:text-[15px]">
@@ -219,18 +224,17 @@ const Header = () => {
                   }}
                   className="w-[220px] rounded-full border border-gray-200 bg-[#f7f8f6] py-2.5 pl-10 pr-4 text-sm text-[#003d4d] transition focus:border-green-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
                 />
-                {searchTerm && (
-                  <div className="absolute top-full left-0 w-full bg-white shadow-lg rounded-md mt-2 z-50">
-                    {loading ? (
-                      <Loader
-                        label="Searching products"
-                        size="sm"
-                        className="min-h-[112px] px-3 py-4"
-                      />
+                {searchTerm.trim() && (
+                  <div className="absolute top-full left-0 z-50 mt-2 w-full rounded-md bg-white shadow-lg">
+                    {loading || searchPending ? (
+                      results.length === 0 ? (
+                        <p className="p-3 text-sm text-slate-500">Searching products...</p>
+                      ) : null
                     ) : results.length === 0 ? (
                       <p className="p-3 text-sm">No products found</p>
-                    ) : (
-                      results.map((product, index) => (
+                    ) : null}
+                    {results.length > 0
+                      ? results.map((product, index) => (
                         <Link
                           key={product._id}
                           href={`/products/${product.slug}`}
@@ -254,7 +258,7 @@ const Header = () => {
                           <span>{product.name}</span>
                         </Link>
                       ))
-                    )}
+                      : null}
                   </div>
                 )}
               </div>
@@ -340,18 +344,17 @@ const Header = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-full border border-gray-200 bg-[#f7f8f6] py-3 pl-11 pr-4 text-sm text-[#003d4d] transition focus:border-green-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
                 />
-                {searchTerm && (
-                  <div className="absolute top-full left-0 w-full bg-white shadow-lg rounded-md mt-2 z-50">
-                    {loading ? (
-                      <Loader
-                        label="Searching products"
-                        size="sm"
-                        className="min-h-[112px] px-3 py-4"
-                      />
+                {searchTerm.trim() && (
+                  <div className="absolute top-full left-0 z-50 mt-2 w-full rounded-md bg-white shadow-lg">
+                    {loading || searchPending ? (
+                      results.length === 0 ? (
+                        <p className="p-3 text-sm text-slate-500">Searching products...</p>
+                      ) : null
                     ) : results.length === 0 ? (
                       <p className="p-3 text-sm">No products found</p>
-                    ) : (
-                      results.map((product) => (
+                    ) : null}
+                    {results.length > 0
+                      ? results.map((product) => (
                         <Link
                           key={product._id}
                           href={`/products/${product.slug}`}
@@ -368,7 +371,7 @@ const Header = () => {
                           <span>{product.name}</span>
                         </Link>
                       ))
-                    )}
+                      : null}
                   </div>
                 )}
               </div>

@@ -1,26 +1,23 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import ProductGrid from "@/components/product/ProductGrid";
 import HeroSection from "@/components/ui/HeroSection";
-import Slider from "@/components/ui/Slider";
 import TrackOrder from "@/components/trackOrder/trackOrder";
 import FAQSection from "@/components/ui/FaqSection";
 import { trackOrderFAQs } from "@/utils/constants";
 
 export default function TrackOrderPageClient() {
-  const router = useRouter();
-
   return (
     <main>
       <HeroSection
+        image="/assets/banner3.png"
+        alt="Track your Kaka Dikro order"
+        eyebrow="Order Updates"
         title="Track Your Order"
-        image="/assets/orderHero.webp"
-        ctaText="Our Products"
-        onCtaClick={() => router.push("/products")}
+        description="Enter your order details below to see where your delivery is and what happens next."
+        primaryCta={{ label: "Our Products", href: "/products" }}
+        secondaryCta={{ label: "Contact Us", href: "/contactUs" }}
       />
-      <Slider />
       <TrackOrder />
       <h1 className="text-xl sm:text-3xl font-semibold text-center text-[#003d4d] mt-10 mb-6">
         While You Wait, Discover Our Bestsellers

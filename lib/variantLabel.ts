@@ -1,4 +1,9 @@
-import type { ProductType, ProductVariant } from "@/types/product";
+import {
+  isCrossLineType,
+  resolveProductType,
+  type ProductType,
+  type ProductVariant,
+} from "@/types/product";
 
 /**
  * Resolves the display label / cart key for a variant.
@@ -35,17 +40,15 @@ export const findVariantByKey = (
 
 export const formatProductTypeLabel = (
   productType?: string | null,
-): string => {
-  const normalized = String(productType || "GROCERY").trim().toUpperCase();
-  if (normalized === "ELECTRONICS") return "Electronics";
-  return "Grocery";
-};
+): string => (isCrossLineType(productType) ? "Cross Line" : "Cross Life");
 
 export const PRODUCT_TYPE_OPTIONS: Array<{
   value: "" | ProductType;
   label: string;
 }> = [
   { value: "", label: "All Products" },
-  { value: "GROCERY", label: "Grocery" },
-  { value: "ELECTRONICS", label: "Electronics" },
+  { value: "CROSSLIFE", label: "Cross Life" },
+  { value: "CROSSLINE", label: "Cross Line" },
 ];
+
+export { resolveProductType };

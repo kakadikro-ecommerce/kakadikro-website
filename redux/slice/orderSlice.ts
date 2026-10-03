@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { AxiosError } from "axios";
 
-import { addCartItem, clearCartItems, fetchCart, removeCartItem, updateCartItem } from "@/redux/slice/cartSlice";
+import { getApiErrorMessage } from "@/lib/apiError";
+import { addCartItem, fetchCart, removeCartItem, updateCartItem } from "@/redux/slice/cartSlice";
 import * as orderApi from "@/redux/api/orderApi";
 import type { RootState } from "@/redux/store";
 import type {
@@ -20,17 +20,8 @@ const initialState: OrderState = {
   error: null,
 };
 
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof AxiosError) {
-    return (
-      (error.response?.data as { message?: string } | undefined)?.message ||
-      error.message ||
-      fallback
-    );
-  }
-
-  return error instanceof Error ? error.message : fallback;
-};
+const getErrorMessage = (error: unknown, fallback: string) =>
+  getApiErrorMessage(error, fallback);
 
 const upsertOrder = (orders: Order[], order: Order) => {
   const existingIndex = orders.findIndex((entry) => entry.id === order.id);
@@ -110,12 +101,9 @@ export const cancelExistingOrder = createAsyncThunk<
         ? state.order.currentOrder
         : state.order.orders.find((entry) => entry.id === orderId);
 
-    const trackedOrderNumber =
-      cancelledOrder.orderNumber || existingOrder?.orderNumber;
-
-    if (trackedOrderNumber) {
+    if (orderId) {
       try {
-        return await orderApi.trackOrder(trackedOrderNumber);
+        return await orderApi.trackOrder(orderId);
       } catch {
         return {
           ...existingOrder,
@@ -240,6 +228,8 @@ const orderSlice = createSlice({
         state.actionLoading = false;
         state.error = action.payload ?? "Failed to cancel the order.";
       })
+      // Live cart always wins over a stale unpaid currentOrder so checkout
+      // never shows a previous order's products after the user adds new items.
       .addCase(fetchCart.fulfilled, (state, action) => {
         if (action.payload.totalItems > 0) {
           state.currentOrder = null;
@@ -259,9 +249,6 @@ const orderSlice = createSlice({
         if (action.payload.totalItems > 0) {
           state.currentOrder = null;
         }
-      })
-      .addCase(clearCartItems.fulfilled, (state) => {
-        state.currentOrder = null;
       });
   },
 });

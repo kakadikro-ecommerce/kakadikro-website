@@ -3,7 +3,31 @@ export interface ProductImage {
   altText?: string;
 }
 
-export type ProductType = "GROCERY" | "ELECTRONICS";
+export interface ProductVideo {
+  url: string;
+  altText?: string;
+}
+
+export type ProductType = "CROSSLIFE" | "CROSSLINE";
+
+const PRODUCT_TYPE_ALIASES: Record<string, ProductType> = {
+  CROSSLIFE: "CROSSLIFE",
+  CROSSLINE: "CROSSLINE",
+  GROCERY: "CROSSLIFE",
+  ELECTRONICS: "CROSSLINE",
+  EQUIPMENT: "CROSSLINE",
+};
+
+export const resolveProductType = (value?: string | null): ProductType | "" => {
+  const normalized = String(value || "").trim().toUpperCase();
+  return PRODUCT_TYPE_ALIASES[normalized] || "";
+};
+
+export const isCrossLifeType = (value?: string | null) =>
+  resolveProductType(value) === "CROSSLIFE";
+
+export const isCrossLineType = (value?: string | null) =>
+  resolveProductType(value) === "CROSSLINE";
 
 export interface ProductVariant {
   /** Preferred display / cart key */
@@ -27,6 +51,7 @@ export interface Product {
   category?: string;
   brand?: string;
   images: ProductImage[];
+  video?: ProductVideo | null;
   variants: ProductVariant[];
   specifications?: Record<string, string>;
   ingredients?: string[];

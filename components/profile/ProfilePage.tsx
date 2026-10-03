@@ -25,6 +25,12 @@ import {
   type ChangePasswordInput,
 } from "@/lib/validations/profile";
 import { showAlert } from "@/components/ui/alert";
+import {
+  getApiErrorMessage,
+  mapApiDetailsToFields,
+  parseApiError,
+  redirectToLoginIfExpired,
+} from "@/lib/apiError";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -41,6 +47,7 @@ export default function ProfilePage() {
   const {
     register: regProfile,
     handleSubmit: handleProfile,
+    setError: setProfileError,
     formState: { errors: profileErrors },
   } = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
@@ -52,6 +59,7 @@ export default function ProfilePage() {
   const {
     register: regPwd,
     handleSubmit: handlePwd,
+    setError: setPwdError,
     formState: { errors: pwdErrors },
     reset,
   } = useForm<ChangePasswordInput>({
@@ -64,19 +72,31 @@ export default function ProfilePage() {
       await updateProfileApi(data);
       dispatch(updateUserProfile({ name: data.name }));
       showAlert({ type: "success", message: "Profile updated" });
-    } catch {
-      showAlert({ type: "error", message: "Update failed" });
+    } catch (error: unknown) {
+      if (redirectToLoginIfExpired(error)) {
+        return;
+      }
+
+      const parsed = parseApiError(error, "Unable to update profile. Please try again.");
+      const fieldErrors = mapApiDetailsToFields(parsed.details);
+      if (fieldErrors.name) {
+        setProfileError("name", { type: "server", message: fieldErrors.name });
+      }
+
+      showAlert({
+        type: "error",
+        message: getApiErrorMessage(
+          error,
+          "Unable to update profile. Please try again.",
+        ),
+      });
     } finally {
       setLoadingProfile(false);
     }
   };
 
   const onPasswordSubmit = async (data: ChangePasswordInput) => {
-    console.log("🔥 SUBMIT CLICKED");
-    console.log("FORM DATA:", data);
-
     if (!currentUser?._id) {
-      console.log("❌ No user ID");
       return;
     }
 
@@ -88,8 +108,34 @@ export default function ProfilePage() {
       });
       showAlert({ type: "success", message: "Password updated" });
       reset();
-    } catch {
-      showAlert({ type: "error", message: "Password update failed" });
+    } catch (error: unknown) {
+      if (redirectToLoginIfExpired(error)) {
+        return;
+      }
+
+      const parsed = parseApiError(
+        error,
+        "Unable to update password. Please try again.",
+      );
+      const fieldErrors = mapApiDetailsToFields(parsed.details, {
+        currentPassword: "currentPassword",
+        newPassword: "newPassword",
+        password: "currentPassword",
+      });
+
+      Object.entries(fieldErrors).forEach(([field, message]) => {
+        if (field === "currentPassword" || field === "newPassword") {
+          setPwdError(field, { type: "server", message });
+        }
+      });
+
+      showAlert({
+        type: "error",
+        message: getApiErrorMessage(
+          error,
+          "Unable to update password. Please try again.",
+        ),
+      });
     } finally {
       setLoadingPassword(false);
     }

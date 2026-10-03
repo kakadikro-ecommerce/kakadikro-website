@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
+import { getApiErrorMessage } from "@/lib/apiError";
 import {
   createProductReview,
   deleteProductReview,
@@ -7,6 +8,9 @@ import {
   type Review,
   updateProductReview,
 } from "@/redux/api/reviewsApi";
+
+/** Stable empty array for selectors — avoids `|| []` allocating a new reference each render. */
+export const EMPTY_REVIEWS: Review[] = [];
 
 interface ReviewsState {
   byProductId: Record<string, Review[]>;
@@ -32,7 +36,7 @@ export const fetchReviewsByProductId = createAsyncThunk(
     try {
       return { productId, ...(await getReviewsByProductId(productId, { page, limit })) };
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : "Failed to fetch reviews.");
+      return rejectWithValue(getApiErrorMessage(error, "Failed to fetch reviews."));
     }
   }
 );
@@ -43,7 +47,7 @@ export const submitReview = createAsyncThunk(
     try {
       return await createProductReview(payload);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : "Failed to create review.");
+      return rejectWithValue(getApiErrorMessage(error, "Failed to create review."));
     }
   }
 );
@@ -54,7 +58,7 @@ export const editReview = createAsyncThunk(
     try {
       return await updateProductReview(reviewId, payload);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : "Failed to update review.");
+      return rejectWithValue(getApiErrorMessage(error, "Failed to update review."));
     }
   }
 );
@@ -66,7 +70,7 @@ export const removeReview = createAsyncThunk(
       await deleteProductReview(reviewId);
       return reviewId;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : "Failed to delete review.");
+      return rejectWithValue(getApiErrorMessage(error, "Failed to delete review."));
     }
   }
 );

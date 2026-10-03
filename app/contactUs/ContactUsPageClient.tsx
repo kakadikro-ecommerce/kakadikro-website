@@ -1,26 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import AboutPreview from "@/components/aboutUs/aboutPreview";
 import CustomerReviews from "@/components/ui/CustomerReviews";
 import ContactUs from "@/components/ui/ContactUs";
 import HeroSection from "@/components/ui/HeroSection";
-import Slider from "@/components/ui/Slider";
+import ProductLines from "@/components/ui/ProductLines";
 
 export default function ContactUsPageClient() {
-  const router = useRouter();
-
   return (
     <main>
       <HeroSection
+        image="/assets/banner4.png"
+        alt="Contact Kaka Dikro"
+        eyebrow="Get In Touch"
         title="Contact Us"
-        image="/assets/contactHero.webp"
-        ctaText="Our Products"
-        onCtaClick={() => router.push("/products")}
+        description="Questions about an order, a product, or a bulk request — send a message and we will get back to you."
+        primaryCta={{ label: "Our Products", href: "/products" }}
+        secondaryCta={{ label: "Track Your Order", href: "/trackOrder" }}
       />
-      <Slider />
       <AboutPreview />
+      <ProductLines />
       <ContactUs />
       <CustomerReviews />
     </main>

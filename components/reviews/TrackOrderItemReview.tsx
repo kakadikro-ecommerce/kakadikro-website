@@ -7,8 +7,15 @@ import { showAlert } from "@/components/ui/alert";
 import ReviewForm from "@/components/reviews/ReviewForm";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { getApiErrorMessage } from "@/lib/apiError";
 import type { Review } from "@/redux/api/reviewsApi";
-import { editReview, fetchReviewsByProductId, removeReview, submitReview } from "@/redux/slice/reviewsSlice";
+import {
+  editReview,
+  EMPTY_REVIEWS,
+  fetchReviewsByProductId,
+  removeReview,
+  submitReview,
+} from "@/redux/slice/reviewsSlice";
 
 type Props = {
   productId: string;
@@ -18,7 +25,9 @@ type Props = {
 export default function TrackOrderItemReview({ productId, delivered }: Props) {
   const dispatch = useAppDispatch();
   const { currentUser } = useAppSelector((state) => state.user);
-  const reviews = useAppSelector((state) => state.reviews.byProductId[productId] || []);
+  const reviews = useAppSelector(
+    (state) => state.reviews.byProductId[productId] ?? EMPTY_REVIEWS,
+  );
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
 
@@ -44,8 +53,11 @@ export default function TrackOrderItemReview({ productId, delivered }: Props) {
       await dispatch(submitReview(values)).unwrap();
       showAlert({ type: "success", message: "Review submitted." });
       void dispatch(fetchReviewsByProductId({ productId }));
-    } catch (message) {
-      showAlert({ type: "error", message: typeof message === "string" ? message : "Unable to submit review." });
+    } catch (error: unknown) {
+      showAlert({
+        type: "error",
+        message: getApiErrorMessage(error, "Unable to submit review."),
+      });
     }
   };
 
@@ -56,8 +68,11 @@ export default function TrackOrderItemReview({ productId, delivered }: Props) {
       setEditingReview(null);
       showAlert({ type: "success", message: "Review updated." });
       void dispatch(fetchReviewsByProductId({ productId }));
-    } catch (message) {
-      showAlert({ type: "error", message: typeof message === "string" ? message : "Unable to update review." });
+    } catch (error: unknown) {
+      showAlert({
+        type: "error",
+        message: getApiErrorMessage(error, "Unable to update review."),
+      });
     }
   };
 
@@ -68,8 +83,11 @@ export default function TrackOrderItemReview({ productId, delivered }: Props) {
       await dispatch(removeReview(reviewId)).unwrap();
       showAlert({ type: "success", message: "Review deleted." });
       void dispatch(fetchReviewsByProductId({ productId }));
-    } catch (message) {
-      showAlert({ type: "error", message: typeof message === "string" ? message : "Unable to delete review." });
+    } catch (error: unknown) {
+      showAlert({
+        type: "error",
+        message: getApiErrorMessage(error, "Unable to delete review."),
+      });
     }
   };
 

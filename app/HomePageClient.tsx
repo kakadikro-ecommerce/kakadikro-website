@@ -1,45 +1,52 @@
 "use client";
 
 import ProductGrid from "@/components/product/ProductGrid";
-import Carousel from "@/components/ui/carousel";
+import HeroSection from "@/components/ui/HeroSection";
 import CustomerReviews from "@/components/ui/CustomerReviews";
-// import Slider from "@/components/ui/Slider";
 import WhyChooseUs from "@/components/ui/whyChooseUs";
 import AboutPreview from "@/components/aboutUs/aboutPreview";
 import ProductProcess from "@/components/product/ProductProcess";
+import ProductLines from "@/components/ui/ProductLines";
 import FAQSection from "@/components/ui/FaqSection";
 import { getProductTypeCatalog } from "@/lib/productTypeCatalog";
 import { generalFaqs } from "@/utils/constants";
 
 export default function HomePageClient() {
-  const groceryCatalog = getProductTypeCatalog("GROCERY");
-  const electronicsCatalog = getProductTypeCatalog("ELECTRONICS");
+  const groceryCatalog = getProductTypeCatalog("CROSSLIFE");
+  const electronicsCatalog = getProductTypeCatalog("CROSSLINE");
 
   return (
     <main>
-      <Carousel />
-      {/* <Slider /> */}
+      <HeroSection
+        image="/assets/banner.png"
+        alt="Kaka Dikro grocery and tools"
+        layout="split"
+        secondaryCta={{ label: "Cross Line — Agri Equipment", href: "/products?type=CROSSLINE" }}
+        primaryCta={{ label: "Cross Life — Foods & Spices", href: "/products?type=CROSSLIFE" }}
+      />
       <WhyChooseUs />
+      <ProductLines />
       <ProductGrid
-        badge="Grocery"
+        badge="Cross Life — Foods & Spices"
         title={groceryCatalog.listingTitle}
         description={groceryCatalog.listingDescription}
-        fixedProductType="GROCERY"
+        fixedProductType="CROSSLIFE"
         limit={4}
         showViewAllButton
-        viewAllHref="/products?type=GROCERY"
+        viewAllHref="/products?type=CROSSLIFE"
       />
+      <ProductProcess line="life" />
       <ProductGrid
-        badge="Electronics"
+        badge="Cross Line — Agri Equipment"
         title={electronicsCatalog.listingTitle}
         description={electronicsCatalog.listingDescription}
-        fixedProductType="ELECTRONICS"
+        fixedProductType="CROSSLINE"
         limit={4}
         showViewAllButton
-        viewAllHref="/products?type=ELECTRONICS"
+        viewAllHref="/products?type=CROSSLINE"
       />
-      <AboutPreview />
-      <ProductProcess />
+      <ProductProcess line="line" />
+      {/* <AboutPreview /> */}
       <CustomerReviews />
       <FAQSection faqs={generalFaqs} />
     </main>

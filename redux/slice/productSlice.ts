@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
+import { getApiErrorMessage } from "@/lib/apiError";
 import {
   getAllProducts,
   getProductBySlug,
@@ -31,7 +32,7 @@ export const fetchProducts = createAsyncThunk<
   {
     search?: string;
     category?: string;
-    productType?: "GROCERY" | "ELECTRONICS";
+    productType?: "CROSSLIFE" | "CROSSLINE";
     page?: number;
     limit?: number;
   },
@@ -40,9 +41,9 @@ export const fetchProducts = createAsyncThunk<
   try {
     return await getAllProducts(params);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch products.";
-    return rejectWithValue(message);
+    return rejectWithValue(
+      getApiErrorMessage(error, "Failed to fetch products."),
+    );
   }
 });
 
@@ -54,9 +55,9 @@ export const fetchProductBySlug = createAsyncThunk<
   try {
     return await getProductBySlug(slug);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch product details.";
-    return rejectWithValue(message);
+    return rejectWithValue(
+      getApiErrorMessage(error, "Failed to fetch product details."),
+    );
   }
 });
 
