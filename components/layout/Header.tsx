@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, Search, ShoppingCart, User, X, ChevronDown } from "lucide-react";
@@ -96,6 +96,13 @@ const Header = () => {
       .catch(() => undefined);
   };
 
+  const clearSearch = () => {
+    setSearchTerm("");
+    setDebouncedSearch("");
+    setResults([]);
+    setActiveIndex(-1);
+  };
+
   const handleLogout = async () => {
     setLogoutLoading(true);
 
@@ -116,80 +123,249 @@ const Header = () => {
     }
   };
 
+  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!results.length) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+    }
+
+    if (e.key === "Enter" && activeIndex >= 0) {
+      const selected = results[activeIndex];
+      window.location.href = `/products/${selected.slug}`;
+    }
+  };
+
+  const searchResultsDropdown = (
+    <div className="absolute top-full left-0 z-50 mt-2 w-full rounded-md border border-gray-100 bg-white shadow-lg">
+      {loading || searchPending ? (
+        results.length === 0 ? (
+          <p className="p-3 text-sm text-slate-500">Searching products...</p>
+        ) : null
+      ) : results.length === 0 ? (
+        <p className="p-3 text-sm">No products found</p>
+      ) : null}
+      {results.length > 0
+        ? results.map((product, index) => (
+            <Link
+              key={product._id}
+              href={`/products/${product.slug}`}
+              onClick={clearSearch}
+              className={`flex items-center gap-3 p-3 cursor-pointer ${
+                index === activeIndex ? "bg-gray-200" : "hover:bg-gray-100"
+              }`}
+            >
+              <CatalogImage
+                src={product.images?.[0]?.url}
+                alt={product.name}
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded object-cover"
+                onExpired={refreshSearchResults}
+              />
+              <span>{product.name}</span>
+            </Link>
+          ))
+        : null}
+    </div>
+  );
+
+  const desktopSearch = (
+    <div className="relative w-full max-w-[260px]">
+      <input
+        type="text"
+        placeholder="Search products..."
+        value={searchTerm}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setActiveIndex(-1);
+        }}
+        onKeyDown={handleSearchKeyDown}
+        className="w-full rounded-md border border-gray-300 bg-white py-2.5 pl-3 pr-10 text-sm text-[#003d4d] transition placeholder:text-gray-400 focus:border-[#003d4d] focus:outline-none focus:ring-2 focus:ring-[#003d4d]/15"
+      />
+      <Search
+        size={16}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+      />
+      {searchTerm.trim() ? searchResultsDropdown : null}
+    </div>
+  );
+
+  const userControl = currentUser ? (
+    <div className="relative group">
+      <button
+        className="inline-flex h-10 w-10 items-center justify-center text-[#003d4d] transition hover:text-green-700 font-bold uppercase"
+        aria-label={currentUser.name || currentUser.email}
+        title={currentUser.name || currentUser.email}
+      >
+        {currentUser.name ? currentUser.name.charAt(0) : <User size={22} strokeWidth={1.6} />}
+      </button>
+      <div className="absolute right-0 top-full hidden w-48 pt-2 group-hover:flex">
+        <div className="flex w-full flex-col rounded-xl border border-gray-100 bg-white p-2 shadow-lg">
+          <div className="border-b px-3 py-2 pb-3 mb-1 text-sm text-gray-900">
+            <p className="font-semibold text-[#003d4d]">{currentUser.name || "User"}</p>
+            <p className="truncate text-xs font-medium text-gray-500">{currentUser.email}</p>
+          </div>
+          <Link
+            href="/profile"
+            className="px-3 py-2 hover:bg-green-50 rounded-md text-sm text-[#003d4d] transition-colors"
+          >
+            Profile
+          </Link>
+          <button
+            onClick={handleLogout}
+            disabled={logoutLoading}
+            className="px-3 py-2 text-left hover:bg-red-50 rounded-md text-sm text-red-600 transition-colors disabled:opacity-60"
+          >
+            {logoutLoading ? "Logging out..." : "Logout"}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <Link
+      href="/login"
+      className="inline-flex h-10 w-10 items-center justify-center text-[#003d4d] transition hover:text-green-700"
+      aria-label="Login"
+      title="Login"
+    >
+      <User size={22} strokeWidth={1.6} />
+    </Link>
+  );
+
+  const cartButton = (
+    <button
+      type="button"
+      className="relative inline-flex h-10 w-10 items-center justify-center text-[#003d4d] transition hover:text-green-700"
+      aria-label="Shopping cart"
+      onClick={() => dispatch(toggleCart())}
+    >
+      <ShoppingCart size={22} strokeWidth={1.6} />
+      <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#003d4d] px-1 text-[10px] font-semibold text-white">
+        {cartCount}
+      </span>
+    </button>
+  );
+
+  const desktopNav = (
+    <nav className="flex flex-wrap items-center justify-center gap-6 whitespace-nowrap font-[family-name:var(--font-serif-stack)] text-[14px] font-bold text-[#003d4d] xl:gap-10 xl:text-[15px]">
+      <Link
+        href="/"
+        className="group relative px-1 py-1.5 transition-colors hover:text-green-800"
+      >
+        Home
+        <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
+      </Link>
+
+      <div
+        className="relative"
+        onMouseEnter={() => setProductsMenuOpen(true)}
+        onMouseLeave={() => setProductsMenuOpen(false)}
+      >
+        <Link
+          href="/products"
+          className="group relative inline-flex items-center gap-1 px-1 py-1.5 transition-colors hover:text-green-800"
+        >
+          Our Products
+          <ChevronDown size={14} className="mt-0.5" />
+          <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
+        </Link>
+
+        {productsMenuOpen ? (
+          <div className="absolute left-1/2 top-full z-50 min-w-[220px] -translate-x-1/2 pt-2">
+            <div className="overflow-hidden rounded-xl border border-gray-100 bg-white py-2 shadow-lg">
+              {productLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block px-4 py-2.5 text-sm font-semibold text-[#003d4d] transition hover:bg-green-50 hover:text-green-800"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {navItems.slice(1).map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className="group relative px-1 py-1.5 transition-colors hover:text-green-800"
+        >
+          {item.label}
+          <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
+        </Link>
+      ))}
+    </nav>
+  );
+
   return (
     <>
       <header
-        className={`sticky top-0 z-50 w-full ${isMenuOpen ? "bg-white" : "bg-white/95 backdrop-blur"
-          }`}
+        className={`sticky top-0 z-50 w-full border-b border-gray-100 ${
+          isMenuOpen ? "bg-white" : "bg-white/95 backdrop-blur"
+        }`}
       >
         <div className="container mx-auto px-4 md:px-6 xl:px-8">
-          <div className="flex items-center justify-between gap-3 py-2 md:gap-6">
-            <Link href="/" className="flex shrink-0 items-center self-center">
+          {/* Top row: search | logo | icons */}
+          <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-2 md:gap-4 md:py-2.5">
+            {/* Left: search (desktop) / menu + search toggle (mobile) */}
+            <div className="flex items-center justify-start gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center text-[#003d4d] transition hover:text-green-700 lg:hidden"
+                onClick={() => setIsMenuOpen(true)}
+                aria-label="Open menu"
+              >
+                <Menu size={22} />
+              </button>
+
+              <div className="hidden w-full max-w-[260px] lg:block">{desktopSearch}</div>
+
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center text-[#003d4d] transition hover:text-green-700 lg:hidden"
+                onClick={() => setShowMobileSearch((prev) => !prev)}
+                aria-label="Toggle search"
+              >
+                <Search size={20} />
+              </button>
+            </div>
+
+            {/* Center: logo */}
+            <Link href="/" className="flex shrink-0 items-center justify-center">
               <img
                 src="/assets/logo.png"
                 alt="Kaka Dikro"
-                className="h-16 w-auto object-contain md:h-20"
+                className="h-14 w-auto object-contain sm:h-16 md:h-[4.5rem]"
               />
             </Link>
 
-            <nav className="hidden flex-1 items-center justify-center gap-8 whitespace-nowrap font-[family-name:var(--font-serif-stack)] text-[14px] font-bold text-[#003d4d] lg:flex xl:gap-12 xl:text-[15px]">
-              <Link
-                href="/"
-                className="group relative px-1 py-3 transition-colors hover:text-green-800"
-              >
-                Home
-                <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
-              </Link>
+            {/* Right: user + cart */}
+            <div className="flex items-center justify-end gap-1 sm:gap-2 md:gap-3">
+              <div className="hidden sm:block">{userControl}</div>
+              {cartButton}
+            </div>
+          </div>
 
-              <div
-                className="relative"
-                onMouseEnter={() => setProductsMenuOpen(true)}
-                onMouseLeave={() => setProductsMenuOpen(false)}
-              >
-                <Link
-                  href="/products"
-                  className="group relative inline-flex items-center gap-1 px-1 py-3 transition-colors hover:text-green-800"
-                >
-                  Our Products
-                  <ChevronDown size={14} className="mt-0.5" />
-                  <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
-                </Link>
+          {/* Bottom row: nav links (desktop / tablet landscape) */}
+          <div className="hidden border-t border-gray-100 py-0.5 lg:flex lg:justify-center">
+            {desktopNav}
+          </div>
+        </div>
 
-                {productsMenuOpen ? (
-                  <div className="absolute left-0 top-full z-50 min-w-[180px] pt-2">
-                    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white py-2 shadow-lg">
-                      {productLinks.map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          className="block px-4 py-2.5 text-sm font-semibold text-[#003d4d] transition hover:bg-green-50 hover:text-green-800"
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {navItems.slice(1).map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="group relative px-1 py-3 transition-colors hover:text-green-800"
-                >
-                  {item.label}
-                  <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
-                </Link>
-              ))}
-            </nav>
-
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3 xl:gap-5">
-              <div className="relative hidden xl:block">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
+        {showMobileSearch ? (
+          <div className="border-t border-gray-100 px-4 pb-4 pt-3 lg:hidden md:px-6">
+            <div className="container mx-auto">
+              <div className="relative">
                 <input
                   type="text"
                   placeholder="Search products..."
@@ -198,182 +374,15 @@ const Header = () => {
                     setSearchTerm(e.target.value);
                     setActiveIndex(-1);
                   }}
-                  onKeyDown={(e) => {
-                    if (!results.length) return;
-
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setActiveIndex((prev) =>
-                        prev < results.length - 1 ? prev + 1 : 0
-                      );
-                    }
-
-                    if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setActiveIndex((prev) =>
-                        prev > 0 ? prev - 1 : results.length - 1
-                      );
-                    }
-
-                    if (e.key === "Enter") {
-                      if (activeIndex >= 0) {
-                        const selected = results[activeIndex];
-                        window.location.href = `/products/${selected.slug}`;
-                      }
-                    }
-                  }}
-                  className="w-[220px] rounded-full border border-gray-200 bg-[#f7f8f6] py-2.5 pl-10 pr-4 text-sm text-[#003d4d] transition focus:border-green-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
+                  onKeyDown={handleSearchKeyDown}
+                  className="w-full rounded-md border border-gray-300 bg-white py-3 pl-4 pr-11 text-sm text-[#003d4d] transition placeholder:text-gray-400 focus:border-[#003d4d] focus:outline-none focus:ring-2 focus:ring-[#003d4d]/15"
+                  autoFocus
                 />
-                {searchTerm.trim() && (
-                  <div className="absolute top-full left-0 z-50 mt-2 w-full rounded-md bg-white shadow-lg">
-                    {loading || searchPending ? (
-                      results.length === 0 ? (
-                        <p className="p-3 text-sm text-slate-500">Searching products...</p>
-                      ) : null
-                    ) : results.length === 0 ? (
-                      <p className="p-3 text-sm">No products found</p>
-                    ) : null}
-                    {results.length > 0
-                      ? results.map((product, index) => (
-                        <Link
-                          key={product._id}
-                          href={`/products/${product.slug}`}
-                          onClick={() => {
-                            setSearchTerm("");
-                            setDebouncedSearch("");
-                            setResults([]);
-                            setActiveIndex(-1);
-                          }}
-                          className={`flex items-center gap-3 p-3 cursor-pointer ${index === activeIndex ? "bg-gray-200" : "hover:bg-gray-100"
-                            }`}
-                        >
-                          <CatalogImage
-                            src={product.images?.[0]?.url}
-                            alt={product.name}
-                            width={40}
-                            height={40}
-                            className="h-10 w-10 rounded object-cover"
-                            onExpired={refreshSearchResults}
-                          />
-                          <span>{product.name}</span>
-                        </Link>
-                      ))
-                      : null}
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-[#003d4d] transition hover:border-green-200 hover:bg-green-50 hover:text-green-700 xl:hidden"
-                onClick={() => setShowMobileSearch((prev) => !prev)}
-                aria-label="Toggle search"
-              >
-                <Search size={19} />
-              </button>
-
-              {currentUser ? (
-                <div className="relative group hidden lg:block">
-                  <button
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-[#003d4d] transition hover:border-green-200 hover:bg-green-50 hover:text-green-700 font-bold uppercase"
-                    aria-label={currentUser.name || currentUser.email}
-                    title={currentUser.name || currentUser.email}
-                  >
-                    {currentUser.name ? currentUser.name.charAt(0) : <User size={20} strokeWidth={1.8} />}
-                  </button>
-                  <div className="absolute right-0 top-full hidden w-48 pt-2 group-hover:flex">
-                    <div className="flex w-full flex-col rounded-xl border border-gray-100 bg-white p-2 shadow-lg">
-                      <div className="border-b px-3 py-2 pb-3 mb-1 text-sm text-gray-900">
-                        <p className="font-semibold text-[#003d4d]">{currentUser.name || "User"}</p>
-                        <p className="truncate text-xs font-medium text-gray-500">{currentUser.email}</p>
-                      </div>
-                      <Link href="/profile" className="px-3 py-2 hover:bg-green-50 rounded-md text-sm text-[#003d4d] transition-colors">Profile</Link>
-                      <button onClick={handleLogout} disabled={logoutLoading} className="px-3 py-2 text-left hover:bg-red-50 rounded-md text-sm text-red-600 transition-colors disabled:opacity-60">{logoutLoading ? "Logging out..." : "Logout"}</button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <Link
-                  href="/login"
-                  className="hidden h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-[#003d4d] transition hover:border-green-200 hover:bg-green-50 hover:text-green-700 lg:inline-flex"
-                  aria-label="Login"
-                  title="Login"
-                >
-                  <User size={20} strokeWidth={1.8} />
-                </Link>
-              )}
-
-              <button
-                type="button"
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-[#003d4d] transition hover:border-green-200 hover:bg-green-50 hover:text-green-700"
-                aria-label="Shopping cart"
-                onClick={() => dispatch(toggleCart())}
-              >
-                <ShoppingCart size={20} strokeWidth={1.8} />
-                {cartCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#003d4d] px-1 text-[10px] font-semibold text-white">
-                    {cartCount}
-                  </span>
-                ) : null}
-              </button>
-
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-[#003d4d] transition hover:border-green-200 hover:bg-green-50 hover:text-green-700 lg:hidden"
-                onClick={() => setIsMenuOpen(true)}
-                aria-label="Open menu"
-              >
-                <Menu size={21} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {showMobileSearch ? (
-          <div className="border-t border-orange-50 px-4 pb-4 pt-2 xl:hidden md:px-6">
-            <div className="container mx-auto">
-              <div className="relative">
                 <Search
                   size={17}
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
                 />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-full border border-gray-200 bg-[#f7f8f6] py-3 pl-11 pr-4 text-sm text-[#003d4d] transition focus:border-green-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
-                />
-                {searchTerm.trim() && (
-                  <div className="absolute top-full left-0 z-50 mt-2 w-full rounded-md bg-white shadow-lg">
-                    {loading || searchPending ? (
-                      results.length === 0 ? (
-                        <p className="p-3 text-sm text-slate-500">Searching products...</p>
-                      ) : null
-                    ) : results.length === 0 ? (
-                      <p className="p-3 text-sm">No products found</p>
-                    ) : null}
-                    {results.length > 0
-                      ? results.map((product) => (
-                        <Link
-                          key={product._id}
-                          href={`/products/${product.slug}`}
-                          className="flex items-center gap-3 p-3 hover:bg-gray-100"
-                        >
-                          <CatalogImage
-                            src={product.images?.[0]?.url}
-                            alt={product.name}
-                            width={40}
-                            height={40}
-                            className="h-10 w-10 rounded object-cover"
-                            onExpired={refreshSearchResults}
-                          />
-                          <span>{product.name}</span>
-                        </Link>
-                      ))
-                      : null}
-                  </div>
-                )}
+                {searchTerm.trim() ? searchResultsDropdown : null}
               </div>
             </div>
           </div>

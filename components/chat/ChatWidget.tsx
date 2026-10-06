@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import ChatPanel from "@/components/chat/ChatPanel";
 import { loadChatMessages, nextMessageNumber, saveChatMessages } from "@/lib/chat/chatStorage";
@@ -288,9 +288,18 @@ export default function ChatWidget() {
           aria-expanded={open}
           aria-controls="kaka-dikro-chat"
           onClick={() => setOpen((current) => !current)}
-          className={`fixed z-[60] flex h-14 w-14 origin-center items-center justify-center rounded-full bg-[#7A330F] text-white shadow-lg hover:bg-[#5f2609] bottom-[calc(16px+env(safe-area-inset-bottom))] right-[calc(16px+env(safe-area-inset-right))] ${wobble && !open ? "chat-launcher-wobble" : ""}`}
+          className={`fixed z-[60] flex h-14 w-14 origin-center items-center justify-center overflow-hidden rounded-full bg-[#7A330F] text-white shadow-lg ring-2 ring-white hover:bg-[#5f2609] bottom-[calc(16px+env(safe-area-inset-bottom))] right-[calc(16px+env(safe-area-inset-right))] ${wobble && !open ? "chat-launcher-wobble" : ""}`}
         >
-          <MessageCircle size={26} aria-hidden="true" />
+          {open ? (
+            <X size={26} aria-hidden="true" />
+          ) : (
+            <img
+              src="/assets/chatbot.webp"
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-cover"
+            />
+          )}
         </button>
       )}
     </>

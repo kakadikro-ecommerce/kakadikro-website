@@ -69,11 +69,19 @@ export default function ChatPanel({
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
     >
       <div className="flex shrink-0 items-center justify-between gap-3 bg-[#7A330F] px-4 py-3 text-white">
-        <div className="min-w-0">
-          <p id="kaka-dikro-chat-title" className="text-base font-semibold leading-tight">
-            Kaka Dikro
-          </p>
-          <p className="text-xs text-[#FFF9F5]/90">Ask us anything</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <img
+            src="/assets/chatbot.webp"
+            alt=""
+            aria-hidden="true"
+            className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/30"
+          />
+          <div className="min-w-0">
+            <p id="kaka-dikro-chat-title" className="text-base font-semibold leading-tight">
+              Kaka Dikro
+            </p>
+            <p className="text-xs text-[#FFF9F5]/90">Ask us anything</p>
+          </div>
         </div>
         <button
           type="button"

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import useEmblaCarousel from "embla-carousel-react";
 
 import ProductCard from "@/components/product/ProductCard";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
@@ -33,14 +34,90 @@ interface ProductGridProps {
 
 function ProductSkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-sm">
-      <div className="aspect-[4/3] animate-pulse bg-orange-100" />
-      <div className="space-y-3 p-5">
-        <div className="h-5 w-2/3 animate-pulse rounded bg-orange-100" />
-        <div className="h-4 w-full animate-pulse rounded bg-slate-100" />
-        <div className="h-4 w-4/5 animate-pulse rounded bg-slate-100" />
-        <div className="h-12 w-full animate-pulse rounded-2xl bg-orange-50" />
+    <div className="overflow-hidden rounded-xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
+      <div className="aspect-[5/4] animate-pulse bg-[#efe8dc]" />
+      <div className="space-y-3 p-4">
+        <div className="flex justify-between gap-3">
+          <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100" />
+          <div className="h-4 w-12 animate-pulse rounded bg-slate-100" />
+        </div>
+        <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-slate-100" />
+        <div className="h-10 w-full animate-pulse rounded-md bg-slate-100" />
+        <div className="h-11 w-full animate-pulse rounded-md bg-[#003d4d]/20" />
       </div>
+    </div>
+  );
+}
+
+function MobileProductSlider({ products }: { products: Product[] }) {
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    containScroll: "trimSnaps",
+    dragFree: false,
+    skipSnaps: false,
+  });
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCanPrev(emblaApi.canScrollPrev());
+    setCanNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+    };
+  }, [emblaApi, onSelect]);
+
+  useEffect(() => {
+    emblaApi?.reInit();
+  }, [emblaApi, products]);
+
+  return (
+    <div className="relative sm:hidden">
+      <div className="overflow-hidden" ref={emblaRef}>
+        <div className="flex touch-pan-y gap-4">
+          {products.map((product) => (
+            <div
+              key={product.id || product._id || product.slug}
+              className="min-w-0 shrink-0 grow-0 basis-[82%]"
+            >
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {products.length > 1 ? (
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => emblaApi?.scrollPrev()}
+            disabled={!canPrev}
+            aria-label="Previous product"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#003d4d]/20 bg-white text-[#003d4d] shadow-sm transition hover:bg-[#003d4d] hover:text-white disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            type="button"
+            onClick={() => emblaApi?.scrollNext()}
+            disabled={!canNext}
+            aria-label="Next product"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#003d4d]/20 bg-white text-[#003d4d] shadow-sm transition hover:bg-[#003d4d] hover:text-white disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -214,14 +291,17 @@ export default function ProductGrid({
   };
 
   const renderProductGrid = (gridProducts: Product[]) => (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {gridProducts.map((product) => (
-        <ProductCard
-          key={product.id || product._id || product.slug}
-          product={product}
-        />
-      ))}
-    </div>
+    <>
+      <MobileProductSlider products={gridProducts} />
+      <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6">
+        {gridProducts.map((product) => (
+          <ProductCard
+            key={product.id || product._id || product.slug}
+            product={product}
+          />
+        ))}
+      </div>
+    </>
   );
 
   if (
@@ -234,28 +314,29 @@ export default function ProductGrid({
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-8">
+    <section className="w-full bg-[#faf7f0] py-12 sm:py-14">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mb-8 text-center sm:mb-10">
         {badge ? (
-          <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">
+          <span className="inline-flex rounded-full bg-[#003d4d]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#003d4d]">
             {badge}
           </span>
         ) : null}
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+        <div className="mt-3 flex flex-col items-center gap-3">
+          <h2 className="text-2xl font-bold uppercase tracking-wide text-[#003d4d] sm:text-3xl">
             {resolvedTitle}
           </h2>
 
           {showViewAllButton && (
             <Link
               href={resolvedViewAllHref}
-              className="whitespace-nowrap text-center rounded-full bg-[#7A330F] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#5f2609]"
+              className="whitespace-nowrap rounded-md bg-[#003d4d] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#025366]"
             >
               View All Products
             </Link>
           )}
         </div>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">
+        <p className="mx-auto mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">
           {resolvedDescription}
         </p>
       </div>
@@ -271,8 +352,8 @@ export default function ProductGrid({
                 onClick={() => updateProductType(option.value)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                   isActive
-                    ? "bg-[#7A330F] text-white shadow-sm"
-                    : "border border-orange-100 bg-white text-slate-700 hover:border-orange-300 hover:text-orange-700"
+                    ? "bg-[#003d4d] text-white shadow-sm"
+                    : "border border-[#003d4d]/15 bg-white text-slate-700 hover:border-[#003d4d]/40 hover:text-[#003d4d]"
                 }`}
               >
                 {option.label}
@@ -343,11 +424,20 @@ export default function ProductGrid({
                 size="lg"
               />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {Array.from({ length: limit }).map((_, index) => (
-                  <ProductSkeletonCard key={index} />
-                ))}
-              </div>
+              <>
+                <div className="flex gap-4 overflow-hidden sm:hidden">
+                  {Array.from({ length: Math.min(limit, 2) }).map((_, index) => (
+                    <div key={index} className="w-[82%] shrink-0">
+                      <ProductSkeletonCard />
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden gap-5 sm:grid sm:grid-cols-2 xl:grid-cols-4">
+                  {Array.from({ length: limit }).map((_, index) => (
+                    <ProductSkeletonCard key={index} />
+                  ))}
+                </div>
+              </>
             )
           ) : gridError ? (
             <div className="text-red-500">{gridError}</div>
@@ -396,6 +486,7 @@ export default function ProductGrid({
           )}
         </div>
       </div>
+    </div>
     </section>
   );
 }

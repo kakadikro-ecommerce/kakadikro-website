@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Eye, ShoppingCart } from "lucide-react";
+import { Star } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { showAlert } from "@/components/ui/alert";
 import CatalogImage from "@/components/ui/CatalogImage";
@@ -14,7 +14,6 @@ import {
 } from "@/lib/productTypeCatalog";
 import {
   findVariantByKey,
-  formatProductTypeLabel,
   getVariantKey,
 } from "@/lib/variantLabel";
 import { getProductBySlug } from "@/redux/api/productApi";
@@ -24,9 +23,39 @@ import type { Product } from "@/types/product";
 
 interface ProductCardProps {
   product: Product;
+  className?: string;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+function getBadge(product: Product): { label: string; tone: "orange" | "teal" } | null {
+  const tags = (product.tags || []).map((tag) => tag.toLowerCase());
+
+  if (tags.some((tag) => tag.includes("trending"))) {
+    return { label: "Trending", tone: "orange" };
+  }
+  if (tags.some((tag) => tag.includes("new"))) {
+    return { label: "New Launch", tone: "teal" };
+  }
+  if (tags.some((tag) => tag.includes("best") || tag.includes("seller"))) {
+    return { label: "Best Seller", tone: "teal" };
+  }
+  if (product.isFeatured) {
+    return { label: "Best Seller", tone: "teal" };
+  }
+  if (product.productType === "CROSSLIFE") {
+    return { label: "Trending", tone: "orange" };
+  }
+  if (product.productType === "CROSSLINE") {
+    return { label: "New Launch", tone: "teal" };
+  }
+  return null;
+}
+
+function stripHtml(value?: string) {
+  if (!value) return "";
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export default function ProductCard({ product, className = "" }: ProductCardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useAppDispatch();
@@ -35,12 +64,22 @@ export default function ProductCard({ product }: ProductCardProps) {
   const [selectedKey, setSelectedKey] = useState(
     getVariantKey(product.variants?.[0]) || "",
   );
-  const [imageSrc, setImageSrc] = useState(product.images?.[0]?.url);
-  const imageCount = product.images?.filter((image) => Boolean(image?.url)).length ?? 0;
+  const imageUrls = useMemo(
+    () => (product.images || []).map((image) => image?.url).filter(Boolean) as string[],
+    [product.images],
+  );
+  const primaryImage = imageUrls[0];
+  const hoverImage = imageUrls.length > 1 ? imageUrls[1] : null;
+  const [imageSrc, setImageSrc] = useState(primaryImage);
+  const [isImageHovered, setIsImageHovered] = useState(false);
 
   useEffect(() => {
-    setImageSrc(product.images?.[0]?.url);
-  }, [product.images, product.slug]);
+    setImageSrc(primaryImage);
+    setIsImageHovered(false);
+  }, [primaryImage, product.slug]);
+
+  const displayImageSrc =
+    isImageHovered && hoverImage ? hoverImage : imageSrc || primaryImage;
 
   const selectedVariant =
     findVariantByKey(product.variants, selectedKey) || product.variants?.[0];
@@ -50,7 +89,6 @@ export default function ProductCard({ product }: ProductCardProps) {
   const price = selectedVariant?.price;
   const mrp = selectedVariant?.mrp;
   const hasDiscount = typeof mrp === "number" && typeof price === "number" && mrp > price;
-  const discountAmount = hasDiscount ? mrp - price : 0;
   const isOutOfStock = typeof selectedVariant?.stock === "number" && selectedVariant.stock <= 0;
   const stockLabel = formatStockLabel(
     product.productType,
@@ -58,13 +96,18 @@ export default function ProductCard({ product }: ProductCardProps) {
     isOutOfStock,
   );
 
-  const savingsLabel = useMemo(() => {
-    if (!hasDiscount || !mrp || !price) {
-      return null;
-    }
-
-    return `${Math.round(((mrp - price) / mrp) * 100)}% OFF`;
-  }, [hasDiscount, mrp, price]);
+  const badge = useMemo(() => getBadge(product), [product]);
+  const hasRating = typeof product.rating === "number" && product.rating > 0;
+  const rating = hasRating ? product.rating! : 0;
+  const shortCopy = useMemo(() => {
+    const raw =
+      product.shortDescription ||
+      stripHtml(product.description) ||
+      product.category ||
+      catalog.categoryFallback ||
+      "";
+    return raw.length > 56 ? `${raw.slice(0, 56).trim()}…` : raw;
+  }, [product.shortDescription, product.description, product.category, catalog.categoryFallback]);
 
   const handleExpiredImage = () => {
     if (!product.slug) {
@@ -135,51 +178,110 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <article className="group flex h-full max-w-[320px] flex-col overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-sm transition hover:shadow-lg sm:max-w-none">
+    <article
+      className={`group flex h-full w-full flex-col overflow-hidden rounded-xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)] ${className}`}
+    >
       <button
         type="button"
         onClick={handleOpenProduct}
-        className="relative block aspect-[4/3] w-full overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.35),_transparent_45%),linear-gradient(135deg,_#fff7ed,_#ffffff_45%,_#fef3c7)] text-left"
+        onMouseEnter={() => setIsImageHovered(true)}
+        onMouseLeave={() => setIsImageHovered(false)}
+        onFocus={() => setIsImageHovered(true)}
+        onBlur={() => setIsImageHovered(false)}
+        className="relative block aspect-[5/4] w-full overflow-hidden bg-[#f3f1ec] text-left"
       >
         <CatalogImage
-          src={imageSrc}
+          src={displayImageSrc}
           fallback="/kde-logo.png"
           alt={product.images?.[0]?.altText || product.name}
           fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-          className="object-cover transition-all duration-500 group-hover:scale-105 group-hover:brightness-110"
+          sizes="(max-width: 640px) 80vw, (max-width: 1200px) 45vw, 25vw"
+          className={`object-cover transition-all duration-500 ${
+            hoverImage && isImageHovered ? "scale-105" : "group-hover:scale-105"
+          }`}
           onExpired={handleExpiredImage}
         />
-        {imageCount > 1 ? (
-          <span className="absolute right-2.5 top-2.5 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white backdrop-blur-sm">
-            {imageCount} photos
+
+        {hoverImage ? (
+          <span className="pointer-events-none absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <span className={`h-1.5 w-1.5 rounded-full ${isImageHovered ? "bg-white/50" : "bg-white"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${isImageHovered ? "bg-white" : "bg-white/50"}`} />
           </span>
         ) : null}
-        <div className="absolute inset-0 bg-black/40 transition-opacity duration-300 group-hover:bg-black/10" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-4 py-3 text-left">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-white/80">
-              {product.category || catalog.categoryFallback}
-            </p>
-            {product.productType ? (
-              <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                {formatProductTypeLabel(product.productType)}
-              </span>
-            ) : null}
-          </div>
-          <h3 className="mt-1 line-clamp-1 text-base font-semibold text-white sm:text-lg">
-            {product.name}
-          </h3>
-        </div>
+
+        {badge ? (
+          <span
+            className={`absolute right-0 top-0 z-10 inline-flex items-center rounded-bl-lg px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white sm:text-[11px] ${
+              badge.tone === "orange" ? "bg-[#e07a2f]" : "bg-[#003d4d]"
+            }`}
+          >
+            {badge.label}
+          </span>
+        ) : null}
+
+        {hasDiscount && typeof mrp === "number" && typeof price === "number" ? (
+          <span className="absolute left-2.5 top-2.5 z-10 rounded-md bg-white/95 px-2 py-1 text-[10px] font-bold text-emerald-700 shadow-sm sm:text-[11px]">
+            {Math.round(((mrp - price) / mrp) * 100)}% OFF
+          </span>
+        ) : null}
       </button>
 
-      <div className="flex flex-1 flex-col gap-2.5 p-3">
-        <div className="grid gap-2">
-          <label className="space-y-2">
+      <div className="flex flex-1 flex-col px-4 pt-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleOpenProduct}
+            className="line-clamp-1 text-left text-[15px] font-bold text-[#003d4d] transition hover:opacity-80 sm:text-base"
+          >
+            {product.name}
+          </button>
+          <span className="shrink-0 text-[15px] font-bold text-slate-900 sm:text-base">
+            {typeof price === "number" ? <>&#8377;{price.toLocaleString("en-IN")}</> : "—"}
+          </span>
+        </div>
+
+        {shortCopy ? (
+          <p className="mt-1 line-clamp-1 text-xs text-slate-500 sm:text-[13px]">
+            {shortCopy}
+          </p>
+        ) : null}
+
+        {hasRating ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-700">
+            <div className="flex items-center gap-0.5 text-amber-400" aria-hidden>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Star
+                  key={index}
+                  size={13}
+                  className={index < Math.round(rating) ? "fill-current" : "fill-none text-slate-300"}
+                />
+              ))}
+            </div>
+            <span className="tabular-nums">{rating.toFixed(2)}</span>
+          </div>
+        ) : null}
+
+        {typeof mrp === "number" && hasDiscount ? (
+          <p className="mt-1 text-xs text-slate-400 line-through">
+            &#8377;{mrp.toLocaleString("en-IN")}
+          </p>
+        ) : null}
+
+        {isOutOfStock ? (
+          <p className="mt-1 text-[11px] font-semibold text-red-600">{stockLabel}</p>
+        ) : null}
+
+        <div className="mt-auto px-0 pb-3 pt-3">
+          <label className="block">
+            <span className="sr-only">Select variant</span>
             <select
               value={selectedKey}
               onChange={(event) => setSelectedKey(event.target.value)}
-              className="w-full rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-medium text-slate-800 outline-none transition focus:border-orange-400 focus:bg-white sm:text-sm"
+              className="w-full appearance-none rounded-md border border-gray-400 bg-white bg-[length:12px] bg-[right_12px_center] bg-no-repeat px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#003d4d] focus:ring-2 focus:ring-[#003d4d]/15"
+              style={{
+                backgroundImage:
+                  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",
+              }}
             >
               {product.variants.map((variant, index) => {
                 const key = getVariantKey(variant) || `variant-${index}`;
@@ -191,54 +293,19 @@ export default function ProductCard({ product }: ProductCardProps) {
               })}
             </select>
           </label>
-
-          {savingsLabel ? <span className="text-[11px] font-semibold text-emerald-700">{savingsLabel}</span> : null}
-        </div>
-
-        <div className="p-1">
-          <div className="flex items-end justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-base font-bold text-orange-600 sm:text-lg">
-                {typeof price === "number" ? <>&#8377; {price}</> : "Price unavailable"}
-              </span>
-              {typeof mrp === "number" ? (
-                <span className="text-[11px] text-slate-400 line-through sm:text-xs">&#8377; {mrp}</span>
-              ) : null}
-            </div>
-
-            {hasDiscount ? (
-              <span className="text-[11px] font-semibold text-emerald-700">
-                Save &#8377; {discountAmount}
-              </span>
-            ) : null}
-          </div>
-          <p className={`mt-1 text-[11px] ${isOutOfStock ? "font-semibold text-red-600" : "text-slate-500"}`}>
-            {stockLabel}
-          </p>
-        </div>
-
-        <div className="mt-auto grid gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={handleOpenProduct}
-            className="flex items-center justify-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:border-orange-300 hover:text-orange-600 sm:text-xs"
-          >
-            <Eye size={16} />
-            <span className="hidden sm:inline">View</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            disabled={isOutOfStock}
-            aria-disabled={isOutOfStock}
-            className="flex items-center justify-center gap-1.5 rounded-full bg-[#7A330F] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#5f2609] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 sm:text-xs"
-          >
-            <ShoppingCart size={16} />
-            <span className="hidden sm:inline">Add</span>
-          </button>
         </div>
       </div>
+
+      {/* Full-bleed bottom CTA — no side padding */}
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        disabled={isOutOfStock}
+        aria-disabled={isOutOfStock}
+        className="w-full rounded-none bg-[#003d4d] px-3 py-3.5 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-[#025366] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 sm:text-sm"
+      >
+        {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+      </button>
     </article>
   );
 }
