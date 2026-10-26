@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: only light;
   --background: #ffffff;
   --foreground: #171717;
   --brand-brown: #7A330F;
@@ -15,19 +16,26 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* --- Base Styles --- */
+html {
+  color-scheme: only light;
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
-/* --- Base Styles --- */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Alan Sans', sans-serif;
   overflow-x: hidden;
+}
+
+/* Keep native controls on the light palette when the OS theme is dark. */
+input,
+textarea,
+select,
+button {
+  color-scheme: only light;
 }
 
 @layer base {

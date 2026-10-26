@@ -5,6 +5,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, ImageOff, Play } from "lucide-react";
 
 import CatalogImage from "@/components/ui/CatalogImage";
+import { toCloudFrontMediaUrl } from "@/lib/image";
 import type { ProductImage, ProductVideo } from "@/types/product";
 
 interface ProductImageGalleryProps {
@@ -40,7 +41,7 @@ export default function ProductImageGallery({
   const galleryImages: GalleryItem[] = (images || [])
     .filter((image) => Boolean(image?.url))
     .map((image) => ({
-      url: image.url,
+      url: toCloudFrontMediaUrl(image.url),
       altText: image.altText,
       kind: isVideoUrl(image.url) ? "video" : "image",
     }));
@@ -50,7 +51,7 @@ export default function ProductImageGallery({
     const alreadyListed = galleryImages.some((item) => mediaPath(item.url) === videoPath);
     if (!alreadyListed) {
       galleryImages.push({
-        url: video.url,
+        url: toCloudFrontMediaUrl(video.url),
         altText: video.altText,
         kind: "video",
       });

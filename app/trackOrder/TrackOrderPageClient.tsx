@@ -10,13 +10,9 @@ export default function TrackOrderPageClient() {
   return (
     <main>
       <HeroSection
-        image="/assets/banner3.png"
+        image="/assets/heroes/hero-crosslife.webp"
+        fallbackImage="/assets/heroes/hero-crosslife.webp"
         alt="Track your Kaka Dikro order"
-        eyebrow="Order Updates"
-        title="Track Your Order"
-        description="Enter your order details below to see where your delivery is and what happens next."
-        primaryCta={{ label: "Our Products", href: "/products" }}
-        secondaryCta={{ label: "Contact Us", href: "/contactUs" }}
       />
       <TrackOrder />
       <h1 className="text-xl sm:text-3xl font-semibold text-center text-[#003d4d] mt-10 mb-6">
@@ -28,8 +24,8 @@ export default function TrackOrderPageClient() {
       <ProductGrid limit={4} showViewAllButton />
       <FAQSection
         badge="Order Help"
-        title="Track Your Order"
-        description="Find answers related to order tracking and delivery."
+        title="Order Tracking FAQs"
+        description="Quick answers while you wait for your delivery."
         faqs={trackOrderFAQs}
       />
     </main>

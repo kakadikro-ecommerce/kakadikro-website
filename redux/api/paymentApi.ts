@@ -1,4 +1,6 @@
 import axios from "@/lib/axios";
+import { getAccessToken } from "@/lib/auth";
+import { getCheckoutIdempotencyKey, getGuestOrderToken } from "@/lib/guestSession";
 import { mapOrder, type RawOrder } from "@/redux/api/orderApi";
 import type { Order } from "@/types/order";
 
@@ -19,6 +21,18 @@ export type RazorpayCheckoutSession = {
   currency: string;
 };
 
+export type MagicCheckoutSession = {
+  order: Order;
+  guestOrderToken?: string;
+  razorpay: RazorpayCheckoutSession;
+  checkout: {
+    oneClickCheckout: boolean;
+    script: string;
+    name: string;
+    showCoupons: boolean;
+  };
+};
+
 export type PaymentOrderResult = {
   razorpay: RazorpayCheckoutSession;
   paymentId?: string;
@@ -28,6 +42,26 @@ export type PaymentOrderResult = {
 export type VerifyPaymentResult = {
   order: Order;
   paymentStatus?: string;
+};
+
+type RawMagicCheckoutResponse = {
+  guestOrderToken?: string;
+  data?: {
+    guestOrderToken?: string;
+    order?: RawOrder;
+    razorpay?: {
+      key?: string;
+      orderId?: string;
+      amount?: number;
+      currency?: string;
+    };
+    checkout?: {
+      oneClickCheckout?: boolean;
+      script?: string;
+      name?: string;
+      showCoupons?: boolean;
+    };
+  };
 };
 
 type RawPaymentOrderResponse = {
@@ -53,6 +87,46 @@ type RawVerifyPaymentResponse = {
       status?: string;
     };
     order?: RawOrder;
+  };
+};
+
+export const startMagicCheckout = async (): Promise<MagicCheckoutSession> => {
+  const response = await axios.post<RawMagicCheckoutResponse>(
+    "/user/payments/magic-checkout",
+    {},
+    {
+      headers: {
+        "Idempotency-Key": getCheckoutIdempotencyKey(),
+      },
+    }
+  );
+
+  const data = response.data?.data;
+  const razorpay = data?.razorpay;
+  const order = data?.order;
+
+  if (!razorpay?.key || !razorpay.orderId || !order) {
+    throw new Error("Unable to start checkout. Please try again.");
+  }
+
+  const guestOrderToken =
+    response.data?.guestOrderToken || data?.guestOrderToken || getGuestOrderToken();
+
+  return {
+    order: mapOrder(order),
+    guestOrderToken: guestOrderToken || undefined,
+    razorpay: {
+      key: razorpay.key,
+      orderId: razorpay.orderId,
+      amount: Number(razorpay.amount),
+      currency: razorpay.currency || "INR",
+    },
+    checkout: {
+      oneClickCheckout: true,
+      script: data?.checkout?.script || "https://checkout.razorpay.com/v1/magic-checkout.js",
+      name: data?.checkout?.name || "Kaka Dikro",
+      showCoupons: false,
+    },
   };
 };
 
@@ -91,9 +165,13 @@ export const createPaymentOrder = async (
 export const verifyPayment = async (
   payload: VerifyPaymentPayload
 ): Promise<VerifyPaymentResult> => {
+  const guestOrderToken = getAccessToken() ? "" : getGuestOrderToken();
   const response = await axios.post<RawVerifyPaymentResponse>(
     "/user/payments/verification",
-    payload
+    payload,
+    guestOrderToken
+      ? { headers: { "X-Guest-Order-Token": guestOrderToken } }
+      : undefined
   );
 
   const order = response.data?.data?.order;

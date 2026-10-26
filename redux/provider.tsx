@@ -71,15 +71,19 @@ function PersistedStateSync() {
     void bootstrapAuth();
   }, [accessToken, dispatch]);
 
+  const isAuthReady = useAppSelector((state) => state.user.isAuthReady);
+
   useEffect(() => {
-    if (accessToken) {
-      void dispatch(fetchCart());
+    if (!isAuthReady) {
       return;
     }
 
-    dispatch(resetCart());
-    dispatch(resetOrderState());
-  }, [accessToken, dispatch]);
+    void dispatch(fetchCart());
+
+    if (!accessToken) {
+      dispatch(resetOrderState());
+    }
+  }, [accessToken, dispatch, isAuthReady]);
 
   useEffect(() => {
     if (currentUser) {

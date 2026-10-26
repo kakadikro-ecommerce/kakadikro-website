@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Star } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { showAlert } from "@/components/ui/alert";
 import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { useAppSelector } from "@/hooks/useAppSelector";
 import { getApiErrorMessage } from "@/lib/apiError";
 import {
   formatStockLabel,
@@ -57,9 +56,7 @@ function stripHtml(value?: string) {
 
 export default function ProductCard({ product, className = "" }: ProductCardProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const dispatch = useAppDispatch();
-  const currentUser = useAppSelector((state) => state.user.currentUser);
   const catalog = getProductTypeCatalog(product.productType);
   const [selectedKey, setSelectedKey] = useState(
     getVariantKey(product.variants?.[0]) || "",
@@ -143,11 +140,6 @@ export default function ProductCard({ product, className = "" }: ProductCardProp
       return;
     }
 
-    if (!currentUser) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname || `/products/${product.slug}`)}`);
-      return;
-    }
-
     void dispatch(
       addCartItem({
         productId,
@@ -195,7 +187,7 @@ export default function ProductCard({ product, className = "" }: ProductCardProp
           fallback="/kde-logo.png"
           alt={product.images?.[0]?.altText || product.name}
           fill
-          sizes="(max-width: 640px) 80vw, (max-width: 1200px) 45vw, 25vw"
+          sizes="(max-width: 640px) 82vw, (max-width: 1024px) 45vw, (max-width: 1280px) 33vw, 25vw"
           className={`object-cover transition-all duration-500 ${
             hoverImage && isImageHovered ? "scale-105" : "group-hover:scale-105"
           }`}

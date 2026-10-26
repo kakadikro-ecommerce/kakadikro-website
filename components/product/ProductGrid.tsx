@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import useEmblaCarousel from "embla-carousel-react";
 
 import ProductCard from "@/components/product/ProductCard";
@@ -13,7 +13,6 @@ import {
   getAllProductsCatalog,
   getProductTypeCatalog,
 } from "@/lib/productTypeCatalog";
-import { PRODUCT_TYPE_OPTIONS } from "@/lib/variantLabel";
 import { fetchProducts } from "@/redux/slice/productSlice";
 import { getAllProducts } from "@/redux/api/productApi";
 import { resolveProductType, type Product, type ProductType } from "@/types/product";
@@ -137,7 +136,6 @@ export default function ProductGrid({
   fixedProductType,
   initialProductType,
 }: ProductGridProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const { items, loading, error, pagination } = useAppSelector(
@@ -266,34 +264,19 @@ export default function ProductGrid({
   }, [items]);
 
   const showSidebar = showControls && !customProducts;
-  const showTypeFilters = showControls && !customProducts && !fixedProductType;
   const showPagination = showControls && !customProducts && Boolean(pagination);
   const isEmpty = !gridLoading && !gridError && visibleProducts.length === 0;
 
-  const updateProductType = (nextType: "" | ProductType) => {
-    setProductType(nextType);
-    setCategory("");
-    setPage(1);
-
-    if (!showControls || fixedProductType) {
-      return;
-    }
-
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextType) {
-      params.set("type", nextType);
-    } else {
-      params.delete("type");
-    }
-
-    const query = params.toString();
-    router.replace(query ? `/products?${query}` : "/products", { scroll: false });
-  };
+  // Products page keeps a sidebar, so 3 columns stay balanced there.
+  // Homepage uses the full width — 4 columns keeps cards closer to that size.
+  const desktopGridClass = showSidebar
+    ? "hidden gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-3 lg:gap-7"
+    : "hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6";
 
   const renderProductGrid = (gridProducts: Product[]) => (
     <>
       <MobileProductSlider products={gridProducts} />
-      <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6">
+      <div className={desktopGridClass}>
         {gridProducts.map((product) => (
           <ProductCard
             key={product.id || product._id || product.slug}
@@ -318,7 +301,7 @@ export default function ProductGrid({
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="mb-8 text-center sm:mb-10">
         {badge ? (
-          <span className="inline-flex rounded-full bg-[#003d4d]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#003d4d]">
+          <span className="inline-flex rounded-full bg-[#7A330F]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#7A330F]">
             {badge}
           </span>
         ) : null}
@@ -330,7 +313,7 @@ export default function ProductGrid({
           {showViewAllButton && (
             <Link
               href={resolvedViewAllHref}
-              className="whitespace-nowrap rounded-md bg-[#003d4d] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#025366]"
+              className="whitespace-nowrap rounded-md bg-[#7A330F] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#5f2609]"
             >
               View All Products
             </Link>
@@ -340,28 +323,6 @@ export default function ProductGrid({
           {resolvedDescription}
         </p>
       </div>
-
-      {showTypeFilters ? (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {PRODUCT_TYPE_OPTIONS.map((option) => {
-            const isActive = productType === option.value;
-            return (
-              <button
-                key={option.label}
-                type="button"
-                onClick={() => updateProductType(option.value)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  isActive
-                    ? "bg-[#003d4d] text-white shadow-sm"
-                    : "border border-[#003d4d]/15 bg-white text-slate-700 hover:border-[#003d4d]/40 hover:text-[#003d4d]"
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
 
       <div className={`flex flex-col gap-8 ${showSidebar ? "lg:flex-row" : ""}`}>
         {showSidebar ? (
@@ -432,7 +393,7 @@ export default function ProductGrid({
                     </div>
                   ))}
                 </div>
-                <div className="hidden gap-5 sm:grid sm:grid-cols-2 xl:grid-cols-4">
+                <div className={desktopGridClass}>
                   {Array.from({ length: limit }).map((_, index) => (
                     <ProductSkeletonCard key={index} />
                   ))}

@@ -5,24 +5,26 @@ const lines = [
   {
     name: "Cross Life",
     tag: "Foods & Spices",
-    image: "/assets/crosslife.png",
+    image: "/assets/crosslife.webp",
     imageAlt: "Cross Life agri foods and spices",
     summary:
       "Cross Life is our kitchen line. It covers agri foods and spices you cook with every day, from masalas and whole spices to daily cooking staples.",
     includes: ["Agri foods", "Spices", "Masalas", "Whole spices"],
     href: "/products?type=CROSSLIFE",
     cta: "Shop Cross Life",
+    accent: "#1f7a34",
   },
   {
     name: "Cross Line",
     tag: "Agri Equipment",
-    image: "/assets/crossline.png",
+    image: "/assets/crossline.webp",
     imageAlt: "Cross Line agri equipment",
     summary:
       "Cross Line is our equipment line. It covers practical tools for farm and home work, including torches, water pumps, and other agri equipment.",
     includes: ["Torches", "Water pumps", "Agri equipment"],
     href: "/products?type=CROSSLINE",
     cta: "Shop Cross Line",
+    accent: "#8E1A22",
   },
 ];
 
@@ -67,7 +69,10 @@ export default function ProductLines() {
                 </div>
 
                 <div className={imageFirst ? "md:order-2" : "md:order-1"}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1f7a34]">
+                  <p
+                    className="text-xs font-semibold uppercase tracking-[0.16em]"
+                    style={{ color: line.accent }}
+                  >
                     {line.tag}
                   </p>
                   <h3 className="mt-2 text-2xl font-bold text-[#003d4d] md:text-3xl">
@@ -93,7 +98,8 @@ export default function ProductLines() {
 
                   <Link
                     href={line.href}
-                    className="mt-6 inline-flex rounded-xl bg-[#7A330F] px-6 py-3 text-sm font-medium text-white shadow-md transition hover:bg-[#5f2609] md:text-base"
+                    className="mt-6 inline-flex rounded-xl px-6 py-3 text-sm font-medium text-white shadow-md transition hover:brightness-110 md:text-base"
+                    style={{ backgroundColor: line.accent }}
                   >
                     {line.cta}
                   </Link>

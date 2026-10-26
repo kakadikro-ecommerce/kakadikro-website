@@ -24,7 +24,7 @@ export default function WhyChooseUs() {
   ];
 
   return (
-    <section className="py-12 mt-12">
+    <section className="mt-10 py-12">
       <div className="text-center mb-10">
         {badge && (
           <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-700 mb-4">
@@ -46,7 +46,7 @@ export default function WhyChooseUs() {
               key={index}
               className="flex items-start gap-4 group transition-all"
             >
-              <div className="bg-[#fdfcf0] text-[#899762] p-3 rounded-full group-hover:scale-110 transition-transform">
+              <div className="rounded-full bg-[#eef6ea] p-3 text-[#1f7a34] transition-transform group-hover:scale-110">
                 <Icon size={26} strokeWidth={2} />
               </div>
               <div>

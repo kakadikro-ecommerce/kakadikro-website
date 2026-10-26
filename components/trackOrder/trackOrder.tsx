@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -43,6 +44,7 @@ import {
   clearOrderError,
   fetchMyOrders,
   fetchOrderById,
+  resetOrderState,
   updateExistingOrder,
 } from "@/redux/slice/orderSlice";
 import {
@@ -169,9 +171,12 @@ const getDefaultValues = (
 
 const TrackOrder = () => {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const { orders, loading, actionLoading, error } = useAppSelector(
     (state) => state.order
   );
+  const currentUser = useAppSelector((state) => state.user.currentUser);
+  const isAuthReady = useAppSelector((state) => state.user.isAuthReady);
   const [input, setInput] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showMyOrders, setShowMyOrders] = useState(false);
@@ -199,16 +204,29 @@ const TrackOrder = () => {
   };
 
   const handleViewMyOrders = () => {
+    if (!currentUser) {
+      setShowMyOrders(false);
+      showAlert({
+        type: "error",
+        message: "Please log in to view your order history.",
+      });
+      router.push("/login?redirect=/trackOrder");
+      return;
+    }
+
     setIsEditingAddress(false);
-    setShowMyOrders(true);
     dispatch(fetchMyOrders())
       .unwrap()
       .then((res) => {
-        if (!selectedOrder && res.orders.length > 0) {
+        setShowMyOrders(true);
+        if (res.orders.length > 0) {
           setSelectedOrder(res.orders[0]);
+        } else {
+          setSelectedOrder(null);
         }
       })
       .catch((error: unknown) => {
+        setShowMyOrders(false);
         showAlert({
           type: "error",
           message: getApiErrorMessage(
@@ -282,6 +300,19 @@ const TrackOrder = () => {
       dispatch(clearOrderError());
     };
   }, [dispatch]);
+
+  // Guests must not see order history. Clear any leftover Redux orders from a
+  // previous login, and never auto-open an order from localStorage guest token.
+  useEffect(() => {
+    if (!isAuthReady || currentUser) {
+      return;
+    }
+
+    setShowMyOrders(false);
+    setSelectedOrder(null);
+    setIsEditingAddress(false);
+    dispatch(resetOrderState());
+  }, [currentUser, dispatch, isAuthReady]);
 
   const handleStartAddressEdit = () => {
     if (!activeOrder?.shippingAddress || !canEditAddress) return;
@@ -675,6 +706,16 @@ const TrackOrder = () => {
                                     website, enter this tracking ID, and track your
                                     order there for the latest movement updates.
                                   </p>
+                                  {activeOrder.shipment.trackingUrl ? (
+                                    <a
+                                      href={activeOrder.shipment.trackingUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex text-sm font-semibold text-[#0d5d6c] underline"
+                                    >
+                                      Open tracking link
+                                    </a>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>

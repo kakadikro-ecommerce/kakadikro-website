@@ -42,6 +42,7 @@ export interface OrderItem {
 export interface ShipmentDetails {
   trackingId?: string;
   courierName?: string;
+  trackingUrl?: string;
   dispatchedAt?: string;
   deliveredAt?: string;
 }

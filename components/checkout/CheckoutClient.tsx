@@ -31,16 +31,16 @@ import {
   isOnlinePaymentMethod,
   needsOnlineCheckout,
 } from "@/lib/paymentLabels";
-import { openRazorpayCheckout } from "@/lib/razorpay";
+import { clearCheckoutIdempotencyKey, hasCheckoutIdempotencyKey } from "@/lib/guestSession";
+import { openMagicCheckout, openRazorpayCheckout } from "@/lib/razorpay";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
 import { getVariantKey } from "@/lib/variantLabel";
-import { createPaymentOrder, verifyPayment } from "@/redux/api/paymentApi";
+import { createPaymentOrder, startMagicCheckout, verifyPayment } from "@/redux/api/paymentApi";
 import { getOrderDisplayId } from "@/redux/api/orderApi";
 import { fetchCart, hydrateCartState } from "@/redux/slice/cartSlice";
 import {
   cancelExistingOrder,
   clearOrderError,
-  createNewOrder,
   fetchMyOrders,
   fetchOrderById,
   hydrateCurrentOrder,
@@ -51,14 +51,11 @@ import {
   EMPTY_SHIPPING_ADDRESS,
   canCancelOrder,
   type Order,
-  type PaymentMethod,
   type ShippingAddress,
 } from "@/types/order";
 import type { AuthUser } from "@/types/user";
 
 const currency = (value: number) => `Rs. ${value.toFixed(2)}`;
-
-type CheckoutPaymentChoice = Extract<PaymentMethod, "cod" | "card">;
 
 const fieldConfig: Array<{
   name: keyof ShippingAddressInput;
@@ -168,8 +165,6 @@ export default function CheckoutClient() {
   const searchParams = useSearchParams();
   const retryOrderId = (searchParams.get("orderId") || "").trim();
   const [isEditingAddress, setIsEditingAddress] = useState(false);
-  const [paymentMethod, setPaymentMethod] =
-    useState<CheckoutPaymentChoice>("card");
   const [paymentLoading, setPaymentLoading] = useState(false);
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector((state) => state.user.currentUser);
@@ -195,11 +190,6 @@ export default function CheckoutClient() {
   });
 
   useEffect(() => {
-    if (!currentUser) {
-      router.replace("/login?redirect=%2Fcheckout");
-      return;
-    }
-
     let cancelled = false;
 
     const bootstrapCheckout = async () => {
@@ -251,7 +241,7 @@ export default function CheckoutClient() {
 
         // A pending online payment does not block a new purchase.
         // Only restore the pay screen when the cart is empty.
-        if (cartSummary.totalItems === 0) {
+        if (currentUser && cartSummary.totalItems === 0) {
           try {
             const result = await dispatch(fetchMyOrders()).unwrap();
             if (cancelled) return;
@@ -277,6 +267,64 @@ export default function CheckoutClient() {
       cancelled = true;
     };
   }, [currentUser, dispatch, retryOrderId, router]);
+
+  const handleMagicCheckout = async () => {
+    if (!cart.items.length && !hasCheckoutIdempotencyKey()) {
+      showAlert({
+        type: "info",
+        message: "Your cart is empty. Add a few items before checkout.",
+      });
+      return;
+    }
+
+    setPaymentLoading(true);
+
+    try {
+      const session = await startMagicCheckout();
+      const checkoutResponse = await openMagicCheckout({
+        key: session.razorpay.key,
+        order_id: session.razorpay.orderId,
+        name: session.checkout.name,
+        description: "Kaka Dikro order",
+        image: "https://www.kakadikro.com/assets/razorpay-logo.png",
+        one_click_checkout: true,
+        show_coupons: false,
+      });
+
+      const verified = await verifyPayment({
+        razorpayOrderId: checkoutResponse.razorpay_order_id,
+        razorpayPaymentId: checkoutResponse.razorpay_payment_id,
+        razorpaySignature: checkoutResponse.razorpay_signature,
+      });
+
+      clearCheckoutIdempotencyKey();
+      dispatch(hydrateCurrentOrder(verified.order));
+      clearLocalCart();
+      void dispatch(fetchCart());
+
+      showAlert({
+        type: "success",
+        message: `Payment successful for order ${getOrderDisplayId(verified.order)}.`,
+      });
+
+      router.replace("/trackOrder");
+    } catch (error: unknown) {
+      void dispatch(fetchCart());
+      const message = getApiErrorMessage(
+        error,
+        "Checkout was not completed. Your items stay in the cart. Open checkout again to continue."
+      );
+      const closed = message.toLowerCase().includes("closed before payment");
+      showAlert({
+        type: closed ? "info" : "error",
+        message: closed
+          ? "Checkout was closed. Your items stay in the cart with no time limit. Use Checkout again to continue, or log in and open Track Order for this order."
+          : message,
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   useEffect(() => {
     reset(getDefaultValues(order?.shippingAddress, currentUser));
@@ -331,6 +379,7 @@ export default function CheckoutClient() {
       currency: paymentSession.razorpay.currency,
       name: "Kaka Dikro",
       description: `Payment for order ${getOrderDisplayId(targetOrder)}`,
+      image: "https://www.kakadikro.com/assets/razorpay-logo.png",
       order_id: paymentSession.razorpay.orderId,
       prefill: {
         name:
@@ -362,71 +411,6 @@ export default function CheckoutClient() {
     });
 
     router.replace("/checkout");
-  };
-
-  const handlePlaceOrder = async (values: ShippingAddressInput) => {
-    if (!cart.items.length) {
-      showAlert({
-        type: "info",
-        message: "Your cart is empty. Add a few items before checkout.",
-      });
-      return;
-    }
-
-    try {
-      const createdOrder = await dispatch(
-        createNewOrder({
-          shippingAddress: values,
-          paymentMethod,
-        })
-      ).unwrap();
-
-      // Order already snapshots cart items — clear local cart for both COD and online.
-      clearLocalCart();
-      void dispatch(fetchCart());
-
-      const displayId = getOrderDisplayId(createdOrder);
-
-      if (!displayId) {
-        showAlert({
-          type: "error",
-          message:
-            "Order was created but its id could not be confirmed. Please check Track Order.",
-        });
-        return;
-      }
-
-      if (paymentMethod === "cod") {
-        showAlert({
-          type: "success",
-          message: `Order ${displayId} placed successfully.`,
-        });
-        return;
-      }
-
-      setPaymentLoading(true);
-      try {
-        await runOnlinePayment(createdOrder);
-      } catch (paymentError: unknown) {
-        showAlert({
-          type: "error",
-          message: getApiErrorMessage(
-            paymentError,
-            "Payment was not completed. Your order is saved — tap Pay now to retry.",
-          ),
-        });
-      } finally {
-        setPaymentLoading(false);
-      }
-    } catch (error: unknown) {
-      showAlert({
-        type: "error",
-        message: getApiErrorMessage(
-          error,
-          "We could not place your order. Please try again.",
-        ),
-      });
-    }
   };
 
   const handleRetryPayment = async () => {
@@ -523,7 +507,8 @@ export default function CheckoutClient() {
   };
 
   const hasCartItems = cart.totalItems > 0;
-  const canShowCheckoutForm = hasCartItems && !showPayNow;
+  const canResumeCheckout = hasCheckoutIdempotencyKey();
+  const canShowCheckoutForm = (hasCartItems || canResumeCheckout) && !showPayNow;
   const summaryItems = showPayNow && order
     ? order.items.map((item) => ({
         key: `${item.productId}-${item.weight}`,
@@ -570,7 +555,7 @@ export default function CheckoutClient() {
                 Review your cart and confirm delivery
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                Complete your shipping details, choose how you want to pay, and confirm your order.
+                Review your cart, then continue. We verify your mobile number and collect the delivery address.
               </p>
             </div>
 
@@ -600,9 +585,7 @@ export default function CheckoutClient() {
                       ? isOnlinePaymentMethod(order.paymentMethod)
                         ? "Online Payment"
                         : "COD"
-                      : paymentMethod === "card"
-                        ? "Online Payment"
-                        : "COD"}
+                      : "Secure payment"}
                 </p>
               </div>
             </div>
@@ -954,92 +937,23 @@ export default function CheckoutClient() {
                   </div>
                 </div>
 
-                <form
-                  onSubmit={handleSubmit(handlePlaceOrder)}
-                  className="mt-6 space-y-5"
-                >
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {fieldConfig.map((field) => (
-                      <Controller
-                        key={field.name}
-                        control={control}
-                        name={field.name}
-                        render={({ field: controllerField }) => (
-                          <AddressField
-                            {...controllerField}
-                            value={controllerField.value ?? ""}
-                            label={field.label}
-                            placeholder={field.placeholder}
-                            icon={field.icon}
-                            error={errors[field.name]?.message}
-                            readOnly={field.name === "fullName"}
-                            className={`w-full ${field.name === "fullName" ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
-                          />
-                        )}
-                      />
-                    ))}
+                <div className="mt-6 space-y-5">
+                  <div className="rounded-[24px] border border-orange-100 bg-orange-50/60 p-4 text-sm leading-6 text-slate-600">
+                    Checkout will ask for your mobile number, send a one-time password, and collect the delivery address. You do not need an account to pay.
                   </div>
-
-                  {orderState.error ? (
-                    <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-                      {orderState.error}
-                    </p>
-                  ) : null}
-
-                  <div className="space-y-3 rounded-[24px] border border-orange-100 bg-orange-50/60 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-700">
-                      Payment method
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("card")}
-                        className={`rounded-2xl border px-4 py-3 text-left transition ${
-                          paymentMethod === "card"
-                            ? "border-[#7A330F] bg-white shadow-sm"
-                            : "border-transparent bg-white/70 hover:border-orange-200"
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-slate-900">
-                          Online Payment
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          UPI, card, netbanking
-                        </p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("cod")}
-                        className={`rounded-2xl border px-4 py-3 text-left transition ${
-                          paymentMethod === "cod"
-                            ? "border-[#7A330F] bg-white shadow-sm"
-                            : "border-transparent bg-white/70 hover:border-orange-200"
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-slate-900">
-                          Cash on delivery
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Pay when your order arrives
-                        </p>
-                      </button>
-                    </div>
-                  </div>
-
                   <button
-                    type="submit"
-                    disabled={orderState.actionLoading || paymentLoading}
+                    type="button"
+                    onClick={() => void handleMagicCheckout()}
+                    disabled={paymentLoading}
                     className="inline-flex w-full items-center justify-center rounded-full bg-[#7A330F] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#5f2609] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {orderState.actionLoading
-                      ? "Placing order..."
-                      : paymentLoading
-                        ? "Opening payment..."
-                        : paymentMethod === "card"
-                          ? "Place order & pay"
-                          : "Place order"}
+                    {paymentLoading
+                      ? "Opening checkout..."
+                      : hasCartItems
+                        ? "Continue to secure checkout"
+                        : "Continue your checkout"}
                   </button>
-                </form>
+                </div>
               </div>
             ) : (
               <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-sm sm:p-6">

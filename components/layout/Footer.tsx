@@ -11,10 +11,6 @@ const ytLink = process.env.NEXT_PUBLIC_YOUTUBE_URL
 const Footer = () => {
   return (
     <footer className="relative mt-16 w-full overflow-hidden bg-white font-[family-name:var(--font-serif-stack)]">
-      {/*
-        Single stacked footer: illustration + content share one cell.
-        Image stays full-width/uncropped; text overlays on top of it.
-      */}
       <div className="grid w-full">
         <div className="col-start-1 row-start-1 w-full self-end" aria-hidden="true">
           <img
@@ -50,15 +46,15 @@ const Footer = () => {
 
                 <div className="mt-2 flex justify-center gap-3 sm:justify-start">
                   <a href={fbLink} target="_blank"
-                    rel="noopener noreferrer" className="rounded-full bg-[#003d4d] p-2 text-white transition hover:bg-green-800">
+                    rel="noopener noreferrer" className="rounded-full bg-[#1f7a34] p-2 text-white transition hover:bg-[#17652b]">
                     <Facebook size={14} />
                   </a>
                   <a href={instaLink} target="_blank"
-                    rel="noopener noreferrer" className="rounded-full bg-[#003d4d] p-2 text-white transition hover:bg-green-800">
+                    rel="noopener noreferrer" className="rounded-full bg-[#1f7a34] p-2 text-white transition hover:bg-[#17652b]">
                     <Instagram size={14} />
                   </a>
                   <a href={ytLink} target="_blank"
-                    rel="noopener noreferrer" className="rounded-full bg-[#003d4d] p-2 text-white transition hover:bg-green-800">
+                    rel="noopener noreferrer" className="rounded-full bg-[#1f7a34] p-2 text-white transition hover:bg-[#17652b]">
                     <Youtube size={14} />
                   </a>
                 </div>

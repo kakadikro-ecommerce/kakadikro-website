@@ -92,7 +92,11 @@ export default function ProductProcess({ line = "life" }: { line?: "life" | "lin
               key={step.title}
               className="flex flex-col items-center text-center max-w-xs"
             >
-              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-[#7A330F] text-white shadow-md">
+              <div
+                className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-md ${
+                  line === "life" ? "bg-[#1f7a34]" : "bg-[#8E1A22]"
+                }`}
+              >
                 {step.icon}
               </div>
 

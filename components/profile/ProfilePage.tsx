@@ -9,6 +9,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { clearStoredAuth } from "@/lib/auth";
+import { clearGuestOrderToken } from "@/lib/guestSession";
 import {
   updateUserProfile as updateProfileApi,
   changePassword as changePasswordApi,
@@ -18,6 +19,7 @@ import {
   updateUserProfile,
   logoutUser,
 } from "@/redux/slice/userSlice";
+import { resetOrderState } from "@/redux/slice/orderSlice";
 import {
   updateProfileSchema,
   changePasswordSchema,
@@ -149,7 +151,9 @@ export default function ProfilePage() {
       // Clear local auth even if the backend cookie is already gone.
     } finally {
       clearStoredAuth();
+      clearGuestOrderToken();
       dispatch(logoutUser());
+      dispatch(resetOrderState());
       showAlert({ type: "success", message: "You have been logged out." });
       router.push("/login");
       setLoggingOut(false);

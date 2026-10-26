@@ -1,12 +1,12 @@
 "use client";
 
 import ProductGrid from "@/components/product/ProductGrid";
-import HeroSection from "@/components/ui/HeroSection";
+import HeroCarousel from "@/components/ui/HeroCarousel";
 import CustomerReviews from "@/components/ui/CustomerReviews";
 import WhyChooseUs from "@/components/ui/whyChooseUs";
-import AboutPreview from "@/components/aboutUs/aboutPreview";
 import ProductProcess from "@/components/product/ProductProcess";
 import ProductLines from "@/components/ui/ProductLines";
+import BrandStories from "@/components/ui/BrandStories";
 import FAQSection from "@/components/ui/FaqSection";
 import { getProductTypeCatalog } from "@/lib/productTypeCatalog";
 import { generalFaqs } from "@/utils/constants";
@@ -17,15 +17,10 @@ export default function HomePageClient() {
 
   return (
     <main>
-      <HeroSection
-        image="/assets/banner.png"
-        alt="Kaka Dikro grocery and tools"
-        layout="split"
-        secondaryCta={{ label: "Cross Line — Agri Equipment", href: "/products?type=CROSSLINE" }}
-        primaryCta={{ label: "Cross Life — Foods & Spices", href: "/products?type=CROSSLIFE" }}
-      />
+      <HeroCarousel />
       <WhyChooseUs />
       <ProductLines />
+      <BrandStories />
       <ProductGrid
         badge="Cross Life — Foods & Spices"
         title={groceryCatalog.listingTitle}
@@ -46,7 +41,6 @@ export default function HomePageClient() {
         viewAllHref="/products?type=CROSSLINE"
       />
       <ProductProcess line="line" />
-      {/* <AboutPreview /> */}
       <CustomerReviews />
       <FAQSection faqs={generalFaqs} />
     </main>

@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, Search, ShoppingCart, User, X, ChevronDown } from "lucide-react";
 import CartDrawer from "@/components/cart/CartDrawer";
 import CatalogImage from "@/components/ui/CatalogImage";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { clearStoredAuth } from "@/lib/auth";
+import { clearGuestOrderToken } from "@/lib/guestSession";
 import { showAlert } from "@/components/ui/alert";
 import { toggleCart } from "@/redux/slice/cartSlice";
+import { resetOrderState } from "@/redux/slice/orderSlice";
 import { logoutUser } from "@/redux/slice/userSlice";
 import { Product } from "@/types/product";
 import { getAllProducts } from "@/redux/api/productApi";
@@ -24,13 +26,17 @@ const navItems = [
 ];
 
 const productLinks = [
-  { href: "/products", label: "All Products" },
-  { href: "/products?type=CROSSLIFE", label: "Cross Life — Foods & Spices" },
-  { href: "/products?type=CROSSLINE", label: "Cross Line — Agri Equipment" },
+  { href: "/products?type=CROSSLIFE", label: "Crosslife" },
+  { href: "/products?type=CROSSLINE", label: "Crossline" },
 ];
 
 const Header = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const isCurrent = (href: string) =>
+    href === "/"
+      ? pathname === "/"
+      : pathname === href || pathname.startsWith(`${href}/`);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -112,7 +118,9 @@ const Header = () => {
       // Frontend state should still be cleared if backend session is already invalid.
     } finally {
       clearStoredAuth();
+      clearGuestOrderToken();
       dispatch(logoutUser());
+      dispatch(resetOrderState());
       setIsMenuOpen(false);
       setLogoutLoading(false);
       showAlert({
@@ -187,11 +195,11 @@ const Header = () => {
           setActiveIndex(-1);
         }}
         onKeyDown={handleSearchKeyDown}
-        className="w-full rounded-md border border-gray-300 bg-white py-2.5 pl-3 pr-10 text-sm text-[#003d4d] transition placeholder:text-gray-400 focus:border-[#003d4d] focus:outline-none focus:ring-2 focus:ring-[#003d4d]/15"
+        className="w-full rounded-full border border-[#eadfce] bg-[#fff6ec] py-2.5 pl-10 pr-4 text-sm text-[#003d4d] transition placeholder:text-[#8a7568] focus:border-[#1f7a34] focus:outline-none focus:ring-2 focus:ring-[#1f7a34]/15"
       />
       <Search
         size={16}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1f7a34]"
       />
       {searchTerm.trim() ? searchResultsDropdown : null}
     </div>
@@ -247,20 +255,27 @@ const Header = () => {
       onClick={() => dispatch(toggleCart())}
     >
       <ShoppingCart size={22} strokeWidth={1.6} />
-      <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#003d4d] px-1 text-[10px] font-semibold text-white">
+      <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#1f7a34] px-1 text-[10px] font-semibold text-white">
         {cartCount}
       </span>
     </button>
   );
 
+  const navLinkClass = (href: string) =>
+    `group relative px-1 py-1.5 transition-colors ${
+      isCurrent(href) ? "text-[#1f7a34]" : "hover:text-[#1f7a34]"
+    }`;
+
+  const navUnderline = (href: string) =>
+    `absolute bottom-0 left-0 h-[2px] rounded-full bg-[#1f7a34] transition-all duration-300 ${
+      isCurrent(href) ? "w-full" : "w-0 group-hover:w-full"
+    }`;
+
   const desktopNav = (
     <nav className="flex flex-wrap items-center justify-center gap-6 whitespace-nowrap font-[family-name:var(--font-serif-stack)] text-[14px] font-bold text-[#003d4d] xl:gap-10 xl:text-[15px]">
-      <Link
-        href="/"
-        className="group relative px-1 py-1.5 transition-colors hover:text-green-800"
-      >
+      <Link href="/" className={navLinkClass("/")}>
         Home
-        <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
+        <span className={navUnderline("/")} />
       </Link>
 
       <div
@@ -268,14 +283,17 @@ const Header = () => {
         onMouseEnter={() => setProductsMenuOpen(true)}
         onMouseLeave={() => setProductsMenuOpen(false)}
       >
-        <Link
-          href="/products"
-          className="group relative inline-flex items-center gap-1 px-1 py-1.5 transition-colors hover:text-green-800"
+        <button
+          type="button"
+          className={`${navLinkClass("/products")} inline-flex items-center gap-1`}
+          aria-expanded={productsMenuOpen}
+          aria-haspopup="menu"
+          onClick={() => setProductsMenuOpen((open) => !open)}
         >
           Our Products
           <ChevronDown size={14} className="mt-0.5" />
-          <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
-        </Link>
+          <span className={navUnderline("/products")} />
+        </button>
 
         {productsMenuOpen ? (
           <div className="absolute left-1/2 top-full z-50 min-w-[220px] -translate-x-1/2 pt-2">
@@ -298,10 +316,10 @@ const Header = () => {
         <Link
           key={item.href}
           href={item.href}
-          className="group relative px-1 py-1.5 transition-colors hover:text-green-800"
+          className={navLinkClass(item.href)}
         >
           {item.label}
-          <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-green-700 transition-all duration-300 group-hover:w-full" />
+          <span className={navUnderline(item.href)} />
         </Link>
       ))}
     </nav>
@@ -310,8 +328,8 @@ const Header = () => {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 w-full border-b border-gray-100 ${
-          isMenuOpen ? "bg-white" : "bg-white/95 backdrop-blur"
+        className={`sticky top-0 z-50 w-full border-b border-[#f0e4d4] shadow-[0_1px_0_rgba(122,51,15,0.04)] ${
+          isMenuOpen ? "bg-[#fffaf6]" : "bg-[#fffaf6]/95 backdrop-blur"
         }`}
       >
         <div className="container mx-auto px-4 md:px-6 xl:px-8">
@@ -357,7 +375,7 @@ const Header = () => {
           </div>
 
           {/* Bottom row: nav links (desktop / tablet landscape) */}
-          <div className="hidden border-t border-gray-100 py-0.5 lg:flex lg:justify-center">
+          <div className="hidden border-t border-[#f0e4d4] py-0.5 lg:flex lg:justify-center">
             {desktopNav}
           </div>
         </div>
@@ -375,12 +393,12 @@ const Header = () => {
                     setActiveIndex(-1);
                   }}
                   onKeyDown={handleSearchKeyDown}
-                  className="w-full rounded-md border border-gray-300 bg-white py-3 pl-4 pr-11 text-sm text-[#003d4d] transition placeholder:text-gray-400 focus:border-[#003d4d] focus:outline-none focus:ring-2 focus:ring-[#003d4d]/15"
+                  className="w-full rounded-full border border-[#eadfce] bg-[#fff6ec] py-3 pl-11 pr-4 text-sm text-[#003d4d] transition placeholder:text-[#8a7568] focus:border-[#1f7a34] focus:outline-none focus:ring-2 focus:ring-[#1f7a34]/15"
                   autoFocus
                 />
                 <Search
                   size={17}
-                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#1f7a34]"
                 />
                 {searchTerm.trim() ? searchResultsDropdown : null}
               </div>

@@ -2,12 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { CheckCircle2, Leaf, Sparkles } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-
 import ProductImageGallery from "@/components/product/ProductImageGallery";
 import { showAlert } from "@/components/ui/alert";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { useAppSelector } from "@/hooks/useAppSelector";
 import { getApiErrorMessage } from "@/lib/apiError";
 import {
   formatStockLabel,
@@ -31,10 +28,7 @@ const cleanList = (items?: string[] | null) =>
   (items || []).map((item) => String(item).trim()).filter(Boolean);
 
 export default function ProductDetails({ product }: ProductDetailsProps) {
-  const router = useRouter();
-  const pathname = usePathname();
   const dispatch = useAppDispatch();
-  const currentUser = useAppSelector((state) => state.user.currentUser);
   const catalog = getProductTypeCatalog(product.productType);
   const isElectronics = isCrossLineType(product.productType);
   const isGrocery = !isElectronics;
@@ -119,13 +113,6 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     }
 
     if (isOutOfStock) {
-      return;
-    }
-
-    if (!currentUser) {
-      router.push(
-        `/login?redirect=${encodeURIComponent(pathname || `/products/${product.slug}`)}`,
-      );
       return;
     }
 

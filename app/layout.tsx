@@ -1,11 +1,16 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ChatWidget from "@/components/chat/ChatWidget";
 import ReduxProvider from "@/redux/provider";
 import AppToaster from "@/components/ui/AppToaster";
 import { siteConfig } from "@/app/seo";
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#ffffff",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.baseUrl),
@@ -62,12 +67,20 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      {
+        url: "/assets/favicon_io/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+      {
+        url: "/assets/favicon_io/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
       { url: "/assets/favicon_io/favicon.ico" },
-      { url: "/assets/favicon_io/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/assets/favicon_io/favicon-16x16.png", sizes: "16x16", type: "image/png" },
     ],
     apple: [{ url: "/assets/favicon_io/apple-touch-icon.png", sizes: "180x180" }],
-    shortcut: ["/assets/favicon_io/favicon.ico"],
+    shortcut: ["/assets/favicon_io/favicon-32x32.png"],
   },
 };
 
@@ -77,13 +90,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ colorScheme: "light" }}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&family=Josefin+Sans:ital,wght@0,100..700;1,100..700&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Sekuya&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-gray-100 min-h-screen flex flex-col" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-[#f6f1ea]" suppressHydrationWarning>
         <ReduxProvider>
           <AppToaster />
           <Header />

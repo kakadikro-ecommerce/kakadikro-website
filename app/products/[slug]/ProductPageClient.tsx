@@ -10,7 +10,9 @@ import HeroSection from "@/components/ui/HeroSection";
 import Loader from "@/components/ui/Loader";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { useHeroBannerImage } from "@/hooks/useHeroBannerImage";
 import { getProductTypeCatalog } from "@/lib/productTypeCatalog";
+import { getHeroBannerFallback } from "@/redux/api/heroBannerApi";
 import { getRelatedProducts } from "@/redux/api/productApi";
 import {
   clearSelectedProduct,
@@ -30,6 +32,10 @@ export default function ProductPageClient() {
     (state) => state.products
   );
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const resolvedType = resolveProductType(selectedProduct?.productType);
+  const productType = resolvedType || null;
+  const heroFallback = getHeroBannerFallback(productType || "HOME");
+  const heroImage = useHeroBannerImage(productType, heroFallback);
 
   useEffect(() => {
     if (!slug) {
@@ -112,24 +118,9 @@ export default function ProductPageClient() {
   return (
     <main>
       <HeroSection
-        image={isElectronics ? "/assets/banner4.png" : "/assets/banner5.png"}
-        alt={isElectronics ? "Kaka Dikro electronics" : "Kaka Dikro grocery"}
-        title={typeCatalog.heroTitle}
-        description={typeCatalog.listingDescription}
-        className={isElectronics ? "text-white" : "text-[#1f7a34]"}
-        panelClassName={
-          isElectronics
-            ? "absolute top-[30%] left-[3.87%] max-w-[90%] sm:max-w-[36%]"
-            : "absolute top-[49%] left-[4.46%] max-w-[90%] sm:max-w-[34%]"
-        }
-        contentClassName="items-start"
-        buttonClassName={
-          isElectronics
-            ? undefined
-            : "rounded-full bg-[#1f7a34] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#25913e] sm:px-5 shadow-md transition duration-300 ease-out hover:-translate-y-1 hover:scale-105"
-        }
-        primaryCta={{ label: "Cross Line", href: "/products?type=CROSSLINE" }}
-        secondaryCta={{ label: "Cross Life", href: "/products?type=CROSSLIFE" }}
+        image={heroImage}
+        fallbackImage={heroFallback}
+        alt={isElectronics ? "Kaka Dikro Crossline" : "Kaka Dikro Crosslife"}
       />
       {/* <ProductPageIntro product={selectedProduct} /> */}
       <div ref={productRef}>

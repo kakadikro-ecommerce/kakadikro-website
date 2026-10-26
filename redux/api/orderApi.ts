@@ -1,4 +1,5 @@
 import axios from "@/lib/axios";
+import { getGuestOrderToken } from "@/lib/guestSession";
 import type {
   CreateOrderPayload,
   Order,
@@ -184,6 +185,20 @@ export const createOrder = async (
   payload: CreateOrderPayload
 ): Promise<Order> => {
   const response = await axios.post<RawOrderResponse>("/user/orders", payload);
+  return parseOrderResponse(response.data);
+};
+
+export const getGuestOrder = async (): Promise<Order> => {
+  const token = getGuestOrderToken();
+  if (!token) {
+    throw new Error("No guest order is available in this browser.");
+  }
+
+  const response = await axios.get<RawOrderResponse>("/user/orders/guest", {
+    headers: {
+      "X-Guest-Order-Token": token,
+    },
+  });
   return parseOrderResponse(response.data);
 };
 

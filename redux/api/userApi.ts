@@ -1,4 +1,5 @@
 import axios from "@/lib/axios";
+import { getGuestCartToken, getGuestOrderToken } from "@/lib/guestSession";
 import type { LoginInput, RegisterInput } from "@/lib/validations/auth";
 
 export const registerUser = async (credentials: RegisterInput) => {
@@ -7,7 +8,12 @@ export const registerUser = async (credentials: RegisterInput) => {
 };
 
 export const loginUser = async (credentials: LoginInput) => {
-    const response = await axios.post("/user/auth/login", credentials);
+    const response = await axios.post("/user/auth/login", credentials, {
+        headers: {
+            "X-Guest-Cart-Token": getGuestCartToken(),
+            "X-Guest-Order-Token": getGuestOrderToken(),
+        },
+    });
     return response.data;
 };
 

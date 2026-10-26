@@ -34,7 +34,7 @@ type RazorpayInstance = {
 };
 
 type RazorpayConstructor = new (
-  options: RazorpayCheckoutOptions & {
+  options: (RazorpayCheckoutOptions | MagicCheckoutOptions) & {
     handler: (response: RazorpaySuccessResponse) => void;
     modal?: {
       ondismiss?: () => void;
@@ -49,18 +49,25 @@ declare global {
 }
 
 const SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+const MAGIC_SCRIPT_URL = "https://checkout.razorpay.com/v1/magic-checkout.js";
 
-export const loadRazorpayScript = (): Promise<boolean> => {
+export type MagicCheckoutOptions = {
+  key: string;
+  order_id: string;
+  name: string;
+  description?: string;
+  image?: string;
+  one_click_checkout: true;
+  show_coupons: false;
+};
+
+const loadScript = (url: string): Promise<boolean> => {
   if (typeof window === "undefined") {
     return Promise.resolve(false);
   }
 
-  if (window.Razorpay) {
-    return Promise.resolve(true);
-  }
-
   const existing = document.querySelector<HTMLScriptElement>(
-    `script[src="${SCRIPT_URL}"]`
+    `script[src="${url}"]`
   );
 
   if (existing) {
@@ -75,11 +82,75 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 
   return new Promise((resolve) => {
     const script = document.createElement("script");
-    script.src = SCRIPT_URL;
+    script.src = url;
     script.async = true;
     script.onload = () => resolve(Boolean(window.Razorpay));
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
+  });
+};
+
+export const loadRazorpayScript = (): Promise<boolean> => {
+  if (typeof window !== "undefined" && window.Razorpay) {
+    return Promise.resolve(true);
+  }
+
+  return loadScript(SCRIPT_URL);
+};
+
+export const loadMagicCheckoutScript = (): Promise<boolean> => {
+  return loadScript(MAGIC_SCRIPT_URL);
+};
+
+export const openMagicCheckout = (
+  options: MagicCheckoutOptions
+): Promise<RazorpaySuccessResponse> => {
+  return new Promise((resolve, reject) => {
+    void loadMagicCheckoutScript().then((loaded) => {
+      if (!loaded || !window.Razorpay) {
+        reject(
+          new Error(
+            "Unable to open secure checkout. Please check your connection and try again."
+          )
+        );
+        return;
+      }
+
+      let settled = false;
+
+      const rzp = new window.Razorpay({
+        ...options,
+        handler: (response) => {
+          settled = true;
+          resolve(response);
+        },
+        modal: {
+          ondismiss: () => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            reject(
+              new Error(
+                "Checkout was closed before payment finished."
+              )
+            );
+          },
+        },
+      });
+
+      rzp.on("payment.failed", (response) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        reject(
+          new Error(response.error?.description || "Payment failed. Please try again.")
+        );
+      });
+
+      rzp.open();
+    });
   });
 };
 
