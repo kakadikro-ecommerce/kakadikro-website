@@ -5,7 +5,7 @@ import Image from "next/image";
 
 import {
   getActiveHeroBanners,
-  getHeroBannerFallback,
+  HOME_HERO_FALLBACK_IMAGES,
 } from "@/redux/api/heroBannerApi";
 import { preloadImage } from "@/lib/preloadImage";
 
@@ -15,13 +15,12 @@ type Slide = {
   alt: string;
 };
 
-const FALLBACK_SLIDES: Slide[] = [
-  {
-    id: "fallback-home",
-    url: getHeroBannerFallback("HOME"),
-    alt: "Kaka Dikro",
-  },
-];
+/** Same assets the CMS serves for HOME — paint instantly, avoid banner swap glitch. */
+const FALLBACK_SLIDES: Slide[] = HOME_HERO_FALLBACK_IMAGES.map((url, index) => ({
+  id: `fallback-home-${index + 1}`,
+  url,
+  alt: "Kaka Dikro",
+}));
 
 const AUTO_MS = 5000;
 

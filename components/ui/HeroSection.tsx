@@ -9,7 +9,7 @@ interface HeroProps {
   fallbackImage?: string;
 }
 
-const DEFAULT_FALLBACK = "/assets/banner.webp";
+const DEFAULT_FALLBACK = "/assets/heroes/hero-crosslife.webp";
 const DEFAULT_SIZE = { width: 1920, height: 654 };
 
 export default function HeroSection({

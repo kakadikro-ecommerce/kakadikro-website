@@ -15,8 +15,15 @@ export interface HeroBanner {
   } | null;
 }
 
+export const HOME_HERO_FALLBACK_IMAGES = [
+  "/assets/heroes/hero-crosslife.webp",
+  "/assets/heroes/hero-crosslife2.webp",
+  "/assets/heroes/hero-crossline.webp",
+  "/assets/heroes/hero-crossline2.webp",
+] as const;
+
 const FALLBACK_BY_PLACEMENT: Record<HeroBannerPlacement, string> = {
-  HOME: "/assets/banner.webp",
+  HOME: HOME_HERO_FALLBACK_IMAGES[0],
   CROSSLIFE: "/assets/heroes/hero-crosslife.webp",
   CROSSLINE: "/assets/heroes/hero-crossline.webp",
 };
